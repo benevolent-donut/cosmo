@@ -67,17 +67,57 @@ func TestExecutionConfiguration(t *testing.T) {
 	t.Run("return an error if the maximum router compatibility version threshold of the router is exceeded", func(t *testing.T) {
 		observed, logs := observer.New(zapcore.DebugLevel)
 		logger := newLogger(observed)
-		nextVersion := int64(RouterCompatibilityVersionThreshold + 1)
+		nextVersion := int64(MaxRouterCompatibilityVersion + 1)
 		compVersion := "0.1.0"
 		compatibilityVersion := fmt.Sprintf("%d:%s", nextVersion, compVersion)
 		assert.False(t, IsRouterCompatibleWithExecutionConfig(logger, compatibilityVersion))
 		logsSlice := logs.All()
 		assert.Equal(t, 1, len(logsSlice))
-		assert.Equal(t, executionConfigVersionThresholdExceededError(nextVersion), logsSlice[0].Message)
+		assert.Equal(t, executionConfigVersionThresholdExceededError(nextVersion, MaxRouterCompatibilityVersion), logsSlice[0].Message)
 		assert.Equal(t, zapcore.ErrorLevel, logsSlice[0].Level)
 		assert.Equal(t, 2, len(logsSlice[0].Context))
 		assert.Equal(t, zap.Int64("router_compatibility_version", nextVersion), logsSlice[0].Context[0])
 		assert.Equal(t, zap.String("composition_package_version", compVersion), logsSlice[0].Context[1])
+	})
+
+	t.Run("router compatibility version 2 is supported", func(t *testing.T) {
+		observed, logs := observer.New(zapcore.DebugLevel)
+		logger := newLogger(observed)
+		assert.True(t, IsRouterCompatibleWithExecutionConfig(logger, "2:0.1.0"))
+		assert.Equal(t, 0, len(logs.All()))
+	})
+
+	t.Run("a router with a maximum version of 1 returns an error for router compatibility version 2", func(t *testing.T) {
+		observed, logs := observer.New(zapcore.DebugLevel)
+		logger := newLogger(observed)
+		assert.False(t, isRouterCompatibleWithExecutionConfig(logger, "2:0.0.0", 1))
+		logsSlice := logs.All()
+		assert.Equal(t, 1, len(logsSlice))
+		assert.Equal(t, executionConfigVersionThresholdExceededError(2, 1), logsSlice[0].Message)
+		assert.Equal(t, zapcore.ErrorLevel, logsSlice[0].Level)
+		assert.Equal(t, 2, len(logsSlice[0].Context))
+		assert.Equal(t, zap.Int64("router_compatibility_version", 2), logsSlice[0].Context[0])
+		assert.Equal(t, zap.String("composition_package_version", "0.0.0"), logsSlice[0].Context[1])
+	})
+
+	t.Run("a router with a maximum version of 2 supports router compatibility version 2", func(t *testing.T) {
+		observed, logs := observer.New(zapcore.DebugLevel)
+		logger := newLogger(observed)
+		assert.True(t, isRouterCompatibleWithExecutionConfig(logger, "2:0.0.0", 2))
+		assert.Equal(t, 0, len(logs.All()))
+	})
+
+	t.Run("a router with a maximum version of 2 returns an error for router compatibility version 3", func(t *testing.T) {
+		observed, logs := observer.New(zapcore.DebugLevel)
+		logger := newLogger(observed)
+		assert.False(t, isRouterCompatibleWithExecutionConfig(logger, "3:0.0.0", 2))
+		logsSlice := logs.All()
+		assert.Equal(t, 1, len(logsSlice))
+		assert.Equal(t, "This router version supports a router execution config version up to 2. The router execution config version supplied is 3. Please upgrade your router version.", logsSlice[0].Message)
+		assert.Equal(t, zapcore.ErrorLevel, logsSlice[0].Level)
+		assert.Equal(t, 2, len(logsSlice[0].Context))
+		assert.Equal(t, zap.Int64("router_compatibility_version", 3), logsSlice[0].Context[0])
+		assert.Equal(t, zap.String("composition_package_version", "0.0.0"), logsSlice[0].Context[1])
 	})
 
 	t.Run("return a warning if the router compatibility version is insufficient", func(t *testing.T) {
