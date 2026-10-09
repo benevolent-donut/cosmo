@@ -353,6 +353,77 @@ describe('@context and @fromContext validation tests', () => {
       ]);
     });
 
+    test('CONTEXT_NOT_SET: returns an error for each instance of @fromContext that is repeated on an argument of a directive definition', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+            }
+            type Profile { displayName: String! }
+            directive @scoped(
+              includeSuspended: Boolean
+                @fromContext(field: "$userScope { includeSuspended }")
+                @fromContext(field: "$userScope { includeSuspended }")
+            ) on FIELD_DEFINITION
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, '@scoped(includeSuspended: ...)', FIRST_ORDINAL, [
+          fromContextOnDirectiveDefinitionArgumentErrorMessage,
+        ]),
+        invalidDirectiveError(FROM_CONTEXT, '@scoped(includeSuspended: ...)', numberToOrdinal(2), [
+          fromContextOnDirectiveDefinitionArgumentErrorMessage,
+        ]),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_NOT_SET: returns an error if @fromContext with a field value that is not a string is defined on an argument of a directive definition', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+            }
+            type Profile { displayName: String! }
+            directive @scoped(includeSuspended: Boolean @fromContext(field: 1)) on FIELD_DEFINITION
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, '@scoped(includeSuspended: ...)', FIRST_ORDINAL, [
+          fromContextOnDirectiveDefinitionArgumentErrorMessage,
+        ]),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
     test('CONTEXT_NOT_SET: returns an error if @fromContext is defined on an argument of an Interface field without an implementation', () => {
       const { errors, warnings } = normalizeSubgraphFailure(
         createSubgraph(

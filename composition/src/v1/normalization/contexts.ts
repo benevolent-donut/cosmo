@@ -102,6 +102,7 @@ type ContextSelectionParseResult = {
 type FromContextApplication = {
   coords: string;
   isRepeated: boolean;
+  ordinal: string;
   argument?: ContextualArgument;
   reference?: ContextReference;
   selectionParseResult?: ContextSelectionParseResult;
@@ -229,10 +230,11 @@ function addFromContextApplications({
   if (!directiveNodes) {
     return;
   }
-  for (const directiveNode of directiveNodes) {
-    const fieldArgumentNode = directiveNode.arguments?.find((argumentNode) => argumentNode.name.value === FIELD);
-    // Values of other kinds are reported by directive validation.
+  for (let i = 0; i < directiveNodes.length; i++) {
+    const fieldArgumentNode = directiveNodes[i].arguments?.find((argumentNode) => argumentNode.name.value === FIELD);
+    // Directive validation reports values of other kinds, but it does not visit directive definitions.
     if (
+      argument &&
       fieldArgumentNode &&
       fieldArgumentNode.value.kind !== Kind.STRING &&
       fieldArgumentNode.value.kind !== Kind.NULL
@@ -243,6 +245,7 @@ function addFromContextApplications({
       argument,
       coords,
       isRepeated: directiveNodes.length > 1,
+      ordinal: numberToOrdinal(i + 1),
     };
     if (fieldArgumentNode?.value.kind === Kind.STRING) {
       application.value = fieldArgumentNode.value.value;
@@ -354,19 +357,17 @@ function validateContextDirectives(
 
 function validateFromContextApplication(
   nf: NormalizationFactory,
-  { argument, coords, isRepeated, reference, selectionParseResult, value }: FromContextApplication,
+  { argument, coords, isRepeated, ordinal, reference, selectionParseResult, value }: FromContextApplication,
   setterTypeNamesByContextName: Map<string, Set<TypeName>>,
 ): ContextualArgumentData | undefined {
-  // Repeated directives are reported by directive validation.
-  if (isRepeated) {
-    return;
-  }
   if (!argument) {
     nf.errors.push(
-      invalidDirectiveError(FROM_CONTEXT, coords, FIRST_ORDINAL, [
-        fromContextOnDirectiveDefinitionArgumentErrorMessage,
-      ]),
+      invalidDirectiveError(FROM_CONTEXT, coords, ordinal, [fromContextOnDirectiveDefinitionArgumentErrorMessage]),
     );
+    return;
+  }
+  // Repeated directives are reported by directive validation.
+  if (isRepeated) {
     return;
   }
   const { argumentData, fieldData, parentData } = argument;
