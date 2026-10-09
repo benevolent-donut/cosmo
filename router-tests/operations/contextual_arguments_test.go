@@ -252,6 +252,75 @@ func TestContextualArguments(t *testing.T) {
 		})
 	})
 
+	t.Run("fetches below sibling fragments wait for the contextual and the literal null fetch", func(t *testing.T) {
+		t.Parallel()
+
+		for _, mode := range contextFetchModes {
+			t.Run(mode.name, func(t *testing.T) {
+				t.Parallel()
+
+				runWithContextSubgraphs(t, testenv.ConfigWithContextsJSONTemplate, &testenv.Config{
+					ModifyEngineExecutionConfiguration: mode.apply,
+				}, func(t *testing.T, xEnv *testenv.Environment, s *contextSubgraphs) {
+					res := xEnv.MakeGraphQLRequestOK(testenv.GraphQLRequest{
+						Query: `{ scopes { ... on Queue { flaggedUsers { friends { handle } badge } } } }`,
+					})
+					require.JSONEq(t, `{"data":{"scopes":[
+						{"flaggedUsers":[{"friends":[{"handle":"h-u3"}],"badge":"u2|level=1"},{"friends":[],"badge":"u3|level=1"}]},
+						{"flaggedUsers":[{"friends":[],"badge":"u5|level=null"}]},
+						{}
+					]}}`, res.Body)
+					require.ElementsMatch(t, []string{
+						`{"representations":[{"__typename":"ModerationQueue","id":"q2","includeSuspended":false}]}`,
+						`{"representations":[{"__typename":"User","id":"u3"}]}`,
+					}, s.variablesTo("public"))
+				})
+			})
+		}
+	})
+
+	t.Run("fetches below sibling fragments wait for both contextual fetches", func(t *testing.T) {
+		t.Parallel()
+
+		for _, mode := range contextFetchModes {
+			t.Run(mode.name, func(t *testing.T) {
+				t.Parallel()
+
+				// u5, the flagged user of the appeal queue a1, gets the friend u1, and its users request finishes last.
+				users := rewriteResponseMiddleware(subgraphs.ContextUsersHandler(), func(body []byte) bool {
+					return bytes.Contains(body, []byte(`"id":"u5"`)) && bytes.Contains(body, []byte("friends"))
+				}, func(response map[string]any) {
+					time.Sleep(200 * time.Millisecond)
+					contextEntities(response)[0].(map[string]any)["friends"] = []any{map[string]any{"__typename": "User", "id": "u1"}}
+				})
+				s := startContextSubgraphsWithHandlers(t, testenv.ConfigWithContextsJSONTemplate, subgraphs.ContextModerationHandler(), subgraphs.ContextPublicHandler(), users)
+				testenv.Run(t, &testenv.Config{
+					RouterConfigJSONTemplate:           s.configJSON,
+					ModifyEngineExecutionConfiguration: mode.apply,
+				}, func(t *testing.T, xEnv *testenv.Environment) {
+					res := xEnv.MakeGraphQLRequestOK(testenv.GraphQLRequest{
+						Query: `{ queues {
+							... on ModerationQueue { flaggedUsers { id friends { id handle } queueView } }
+							... on AppealQueue { flaggedUsers { id friends { id handle } queueView } }
+						} }`,
+					})
+					require.JSONEq(t, `{"data":{"queues":[
+						{"flaggedUsers":[
+							{"id":"u1","friends":[{"id":"u2","handle":"h-u2"}],"queueView":"u1|includeSuspended=true"},
+							{"id":"u2","friends":[{"id":"u3","handle":"h-u3"}],"queueView":"u2|includeSuspended=true"}
+						]},
+						{"flaggedUsers":[
+							{"id":"u5","friends":[{"id":"u1","handle":"h-u1"}],"queueView":"u5|includeSuspended=false"}
+						]}
+					]}}`, res.Body)
+					require.Equal(t, []string{
+						`{"representations":[{"__typename":"User","id":"u2"},{"__typename":"User","id":"u3"},{"__typename":"User","id":"u1"}]}`,
+					}, s.variablesTo("public"))
+				})
+			})
+		}
+	})
+
 	t.Run("response cache keeps values apart", func(t *testing.T) {
 		t.Parallel()
 
@@ -612,6 +681,77 @@ func TestContextualArguments(t *testing.T) {
 			})
 		})
 
+		t.Run("deferred fields below a consumer whose parent comes from the users subgraph", func(t *testing.T) {
+			t.Parallel()
+
+			for _, tc := range []struct {
+				name     string
+				query    string
+				payloads []string
+			}{
+				{
+					name:  "deferred field of the consumer",
+					query: `{ moderationQueue(id: "q1") { flaggedUsers { friends { profile { displayName } ... @defer { profile { includeSuspended } } } } } }`,
+					payloads: []string{
+						`{"data":{"moderationQueue":{"flaggedUsers":[{"friends":[{"profile":{"displayName":"u2"}}]},{"friends":[{"profile":{"displayName":"u3"}}]}]}},"pending":[{"id":"1","path":["moderationQueue","flaggedUsers"]}],"hasNext":true}`,
+						`{"incremental":[
+							{"data":{"includeSuspended":true},"id":"1","subPath":[0,"friends",0,"profile"]},
+							{"data":{"includeSuspended":true},"id":"1","subPath":[1,"friends",0,"profile"]}
+						],"completed":[{"id":"1"}],"hasNext":false}`,
+					},
+				},
+				{
+					name:  "deferred parent of the consumer",
+					query: `{ moderationQueue(id: "q1") { flaggedUsers { ... @defer { friends { profile { displayName } } } friends { profile { includeSuspended } } } } }`,
+					payloads: []string{
+						`{"data":{"moderationQueue":{"flaggedUsers":[{"friends":[{"profile":{"includeSuspended":true}}]},{"friends":[{"profile":{"includeSuspended":true}}]}]}},"pending":[{"id":"1","path":["moderationQueue","flaggedUsers"]}],"hasNext":true}`,
+						`{"incremental":[
+							{"data":{"displayName":"u2"},"id":"1","subPath":[0,"friends",0,"profile"]},
+							{"data":{"displayName":"u3"},"id":"1","subPath":[1,"friends",0,"profile"]}
+						],"completed":[{"id":"1"}],"hasNext":false}`,
+					},
+				},
+				{
+					name:  "null setter value",
+					query: `{ post(id: "p1") { author { friends { ... @defer { profile { displayName } } profile { includeSuspended } } } } }`,
+					payloads: []string{
+						`{"data":{"post":{"author":{"friends":[{"profile":{"includeSuspended":null}}]}}},"pending":[{"id":"1","path":["post","author","friends"]}],"hasNext":true}`,
+						`{"incremental":[{"data":{"displayName":"u2"},"id":"1","subPath":[0,"profile"]}],"completed":[{"id":"1"}],"hasNext":false}`,
+					},
+				},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+
+					runWithContextSubgraphs(t, testenv.ConfigWithContextsJSONTemplate, deferConfig(), func(t *testing.T, xEnv *testenv.Environment, s *contextSubgraphs) {
+						payloads := contextDeferPayloads(t, xEnv, tc.query)
+						require.Len(t, payloads, len(tc.payloads))
+						for i := range tc.payloads {
+							require.JSONEq(t, tc.payloads[i], payloads[i])
+						}
+					})
+				})
+			}
+		})
+
+		t.Run("deferred consumer of a sibling fragment is delivered in its defer scope", func(t *testing.T) {
+			t.Parallel()
+
+			runWithContextSubgraphs(t, testenv.ConfigWithContextsJSONTemplate, deferConfig(), func(t *testing.T, xEnv *testenv.Environment, s *contextSubgraphs) {
+				payloads := contextDeferPayloads(t, xEnv, `{ queues {
+					flaggedUsers { id }
+					... on ModerationQueue { flaggedUsers { queueView } }
+					... on AppealQueue { flaggedUsers { ... @defer { queueView } } }
+				} }`)
+				require.Len(t, payloads, 2)
+				require.JSONEq(t, `{"data":{"queues":[
+					{"flaggedUsers":[{"id":"u1","queueView":"u1|includeSuspended=true"},{"id":"u2","queueView":"u2|includeSuspended=true"}]},
+					{"flaggedUsers":[{"id":"u5"}]}
+				]},"pending":[{"id":"1","path":["queues"]}],"hasNext":true}`, payloads[0])
+				require.JSONEq(t, `{"incremental":[{"data":{"queueView":"u5|includeSuspended=false"},"id":"1","subPath":[1,"flaggedUsers",0]}],"completed":[{"id":"1"}],"hasNext":false}`, payloads[1])
+			})
+		})
+
 		t.Run("client defer on the setter field does not delay the context selection", func(t *testing.T) {
 			t.Parallel()
 
@@ -808,6 +948,42 @@ func TestContextualArguments(t *testing.T) {
 		})
 	})
 
+	t.Run("errors of the context selection point at the setter object", func(t *testing.T) {
+		t.Parallel()
+
+		for mode, expected := range map[config.SubgraphErrorPropagationMode]string{
+			config.SubgraphErrorPropagationModePassthrough: `[{"message":"policy level failed","path":["moderationQueues"],"extensions":{"statusCode":200}}]`,
+			config.SubgraphErrorPropagationModeWrapped:     `[{"message":"Failed to fetch from Subgraph 'public' at Path 'moderationQueues'.","extensions":{"errors":[{"message":"policy level failed","path":["moderationQueues"]}],"statusCode":200}}]`,
+		} {
+			t.Run(string(mode), func(t *testing.T) {
+				t.Parallel()
+
+				public := rewriteResponseMiddleware(subgraphs.ContextPublicHandler(), func(body []byte) bool {
+					return bytes.Contains(body, []byte("policyLevel"))
+				}, func(response map[string]any) {
+					contextEntities(response)[1].(map[string]any)["__context_0"] = nil
+					response["errors"] = []any{map[string]any{"message": "policy level failed", "path": []any{"_entities", 1, "__context_0"}}}
+				})
+				s := startContextSubgraphsWithHandlers(t, testenv.ConfigWithContextsJSONTemplate, subgraphs.ContextModerationHandler(), public, subgraphs.ContextUsersHandler())
+				testenv.Run(t, &testenv.Config{
+					RouterConfigJSONTemplate: s.configJSON,
+					ModifySubgraphErrorPropagation: func(cfg *config.SubgraphErrorPropagationConfiguration) {
+						cfg.Mode = mode
+					},
+				}, func(t *testing.T, xEnv *testenv.Environment) {
+					res := xEnv.MakeGraphQLRequestOK(testenv.GraphQLRequest{
+						Query: `{ moderationQueues { id flaggedUsers { id badge } } }`,
+					})
+					require.JSONEq(t, `{"errors":`+expected+`,"data":{"moderationQueues":[
+						{"id":"q1","flaggedUsers":[{"id":"u1","badge":"u1|level=3"},{"id":"u2","badge":"u2|level=3"}]},
+						{"id":"q2","flaggedUsers":[{"id":"u2","badge":"u2|level=null"},{"id":"u3","badge":"u3|level=null"}]},
+						{"id":"q3","flaggedUsers":[{"id":"u1","badge":"u1|level=3"},{"id":"u4","badge":"u4|level=3"}]}
+					]}}`, res.Body)
+				})
+			})
+		}
+	})
+
 	t.Run("more distinct values than the group limit return an error and send nothing", func(t *testing.T) {
 		t.Parallel()
 
@@ -989,10 +1165,15 @@ func startContextSubgraphs(t *testing.T, template string) *contextSubgraphs {
 
 func startContextSubgraphsWithUsers(t *testing.T, template string, users http.Handler) *contextSubgraphs {
 	t.Helper()
+	return startContextSubgraphsWithHandlers(t, template, subgraphs.ContextModerationHandler(), subgraphs.ContextPublicHandler(), users)
+}
+
+func startContextSubgraphsWithHandlers(t *testing.T, template string, moderation, public, users http.Handler) *contextSubgraphs {
+	t.Helper()
 
 	s := &contextSubgraphs{}
-	moderationServer := s.serve(t, "moderation", subgraphs.ContextModerationHandler())
-	publicServer := s.serve(t, "public", subgraphs.ContextPublicHandler())
+	moderationServer := s.serve(t, "moderation", moderation)
+	publicServer := s.serve(t, "public", public)
 	usersServer := s.serve(t, "users", users)
 	s.configJSON = strings.NewReplacer(
 		subgraphs.ContextModerationDefaultDemoURL, testenv.GqlURL(moderationServer),
@@ -1079,6 +1260,43 @@ func (s *contextSubgraphs) reset() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.recorded = nil
+}
+
+// rewriteResponseMiddleware lets rewrite change the decoded response to every request whose body match accepts.
+func rewriteResponseMiddleware(next http.Handler, match func(body []byte) bool, rewrite func(response map[string]any)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		if !match(body) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		rec := httptest.NewRecorder()
+		next.ServeHTTP(rec, r)
+		var response map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		rewrite(response)
+		out, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(out)
+	})
+}
+
+func contextEntities(response map[string]any) []any {
+	data, _ := response["data"].(map[string]any)
+	entities, _ := data["_entities"].([]any)
+	return entities
 }
 
 // contextDeferPayloads returns the JSON payloads of a multipart response to a request with @defer, in order.
