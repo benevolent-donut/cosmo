@@ -4052,46 +4052,45 @@ describe('@context and @fromContext validation tests', () => {
       ]);
     });
 
-    test('CONTEXT_INVALID_SELECTION: returns an error for each non-null contextual argument of the multiple contexts example of the Apollo documentation', () => {
+    test('CONTEXT_INVALID_SELECTION: returns an error for each non-null contextual argument that three setter types of one context populate', () => {
       const { errors, warnings } = federateSubgraphsFailure(
         [
           createSubgraph(
-            'docs',
+            'queues',
             `
               extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@context", "@fromContext"])
               type Query {
-                a: A!
-                b: B!
-                c: C!
+                moderationQueues: [ModerationQueue!]!
+                appealQueues: [AppealQueue!]!
+                reportQueues: [ReportQueue!]!
               }
-              type A @key(fields: "id") @context(name: "context1"){
+              type ModerationQueue @key(fields: "id") @context(name: "queueScope") {
                 id: ID!
-                field: String!
-                someField: String!
-                child: Child!
+                region: String!
+                reviewLevel: String!
+                tickets: [Ticket!]!
               }
-              type B @key(fields: "id") @context(name: "context1"){
+              type AppealQueue @key(fields: "id") @context(name: "queueScope") {
                 id: ID!
-                field: String!
-                someField: String!
-                child: Child!
+                region: String!
+                reviewLevel: String!
+                tickets: [Ticket!]!
               }
-              type C @key(fields: "id") @context(name: "context1") {
+              type ReportQueue @key(fields: "id") @context(name: "queueScope") {
                 id: ID!
-                field: String!
-                someOtherField: String!
-                child: Child!
+                region: String!
+                severity: String!
+                tickets: [Ticket!]!
               }
-              type Child @key(fields: "id") {
+              type Ticket @key(fields: "id") {
                 id: ID!
-                prop1(
-                  arg: String!
-                      @fromContext(field: "$context1 ... on A { someField } ... on B { someField } ... on C { someOtherField }")
-                ): Int!
-                prop2(
-                  arg: String!
-                      @fromContext(field: "$context1 { field }")
-                ): Int!
+                assignee(
+                  level: String!
+                    @fromContext(
+                      field: "$queueScope ... on ModerationQueue { reviewLevel } ... on AppealQueue { reviewLevel } ... on ReportQueue { severity }"
+                    )
+                ): String
+                locale(region: String! @fromContext(field: "$queueScope { region }")): String
               }
             `,
           ),
@@ -4099,50 +4098,48 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(errors).toStrictEqual([
-        requiredContextArgumentError('Child.prop1(arg: ...)', ['docs'], ['docs']),
-        requiredContextArgumentError('Child.prop2(arg: ...)', ['docs'], ['docs']),
+        requiredContextArgumentError('Ticket.assignee(level: ...)', ['queues'], ['queues']),
+        requiredContextArgumentError('Ticket.locale(region: ...)', ['queues'], ['queues']),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'docs' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'docs' }),
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'queues' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'queues' }),
       ]);
     });
 
-    test('CONTEXT_INVALID_SELECTION: returns an error for the non-null contextual argument of the disambiguation example of the Apollo documentation', () => {
+    test('CONTEXT_INVALID_SELECTION: returns an error for a non-null contextual argument below nested setter types of one context', () => {
       const { errors, warnings } = federateSubgraphsFailure(
         [
           createSubgraph(
-            'docs',
+            'queues',
             `
               extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@context", "@fromContext"])
-              type Query {
-                a: A!
-              }
-              type A @key(fields: "id") @context(name: "context1") {
+              type Query { organization: Organization }
+              type Organization @key(fields: "id") @context(name: "queueScope") {
                 id: ID!
-                field: String!
-                b: B!
+                region: String!
+                queue: ModerationQueue!
               }
-              type B @key(fields: "id") @context(name: "context1") {
+              type ModerationQueue @key(fields: "id") @context(name: "queueScope") {
                 id: ID!
-                field: String!
-                c: C!
+                region: String!
+                ticket: Ticket!
               }
-              type C @key(fields: "id") {
+              type Ticket @key(fields: "id") {
                 id: ID!
-                prop(
-                  arg: String! @fromContext(field: "$context1 { field }")
-                ): Int!
+                locale(region: String! @fromContext(field: "$queueScope { region }")): String
               }
             `,
           ),
         ],
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
-      expect(errors).toStrictEqual([requiredContextArgumentError('C.prop(arg: ...)', ['docs'], ['docs'])]);
+      expect(errors).toStrictEqual([
+        requiredContextArgumentError('Ticket.locale(region: ...)', ['queues'], ['queues']),
+      ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'docs' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'docs' }),
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'queues' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'queues' }),
       ]);
     });
   });
@@ -5664,46 +5661,45 @@ describe('@context and @fromContext validation tests', () => {
       ]);
     });
 
-    test('composes the multiple contexts example of the Apollo documentation with nullable arguments', () => {
+    test('composes if three setter types of one context populate nullable contextual arguments', () => {
       const { warnings } = federateSubgraphsSuccess(
         [
           createSubgraph(
-            'docs',
+            'queues',
             `
               extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@context", "@fromContext"])
               type Query {
-                a: A!
-                b: B!
-                c: C!
+                moderationQueues: [ModerationQueue!]!
+                appealQueues: [AppealQueue!]!
+                reportQueues: [ReportQueue!]!
               }
-              type A @key(fields: "id") @context(name: "context1"){
+              type ModerationQueue @key(fields: "id") @context(name: "queueScope") {
                 id: ID!
-                field: String!
-                someField: String!
-                child: Child!
+                region: String!
+                reviewLevel: String!
+                tickets: [Ticket!]!
               }
-              type B @key(fields: "id") @context(name: "context1"){
+              type AppealQueue @key(fields: "id") @context(name: "queueScope") {
                 id: ID!
-                field: String!
-                someField: String!
-                child: Child!
+                region: String!
+                reviewLevel: String!
+                tickets: [Ticket!]!
               }
-              type C @key(fields: "id") @context(name: "context1") {
+              type ReportQueue @key(fields: "id") @context(name: "queueScope") {
                 id: ID!
-                field: String!
-                someOtherField: String!
-                child: Child!
+                region: String!
+                severity: String!
+                tickets: [Ticket!]!
               }
-              type Child @key(fields: "id") {
+              type Ticket @key(fields: "id") {
                 id: ID!
-                prop1(
-                  arg: String
-                      @fromContext(field: "$context1 ... on A { someField } ... on B { someField } ... on C { someOtherField }")
-                ): Int!
-                prop2(
-                  arg: String
-                      @fromContext(field: "$context1 { field }")
-                ): Int!
+                assignee(
+                  level: String
+                    @fromContext(
+                      field: "$queueScope ... on ModerationQueue { reviewLevel } ... on AppealQueue { reviewLevel } ... on ReportQueue { severity }"
+                    )
+                ): String
+                locale(region: String @fromContext(field: "$queueScope { region }")): String
               }
             `,
           ),
@@ -5711,8 +5707,8 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'docs' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'docs' }),
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'queues' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'queues' }),
       ]);
     });
 
