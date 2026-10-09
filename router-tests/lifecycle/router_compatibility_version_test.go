@@ -3,11 +3,13 @@ package integration
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/wundergraph/cosmo/demo/pkg/subgraphs"
 	"github.com/wundergraph/cosmo/router-tests/testenv"
 	"github.com/wundergraph/cosmo/router/core"
 	nodev1 "github.com/wundergraph/cosmo/router/gen/proto/wg/cosmo/node/v1"
@@ -37,6 +39,39 @@ func TestRouterCompatibilityVersion(t *testing.T) {
 		}, func(t *testing.T, xEnv *testenv.Environment) {
 			res := xEnv.MakeGraphQLRequestOK(testenv.GraphQLRequest{Query: employeesQuery})
 			require.JSONEq(t, employeesData, res.Body)
+		})
+	})
+
+	t.Run("starts with the version 2 contexts config and fills contextual arguments", func(t *testing.T) {
+		t.Parallel()
+
+		moderation := httptest.NewServer(subgraphs.ContextModerationHandler())
+		t.Cleanup(moderation.Close)
+		public := httptest.NewServer(subgraphs.ContextPublicHandler())
+		t.Cleanup(public.Close)
+		users := httptest.NewServer(subgraphs.ContextUsersHandler())
+		t.Cleanup(users.Close)
+		configJSON := strings.NewReplacer(
+			subgraphs.ContextModerationDefaultDemoURL, testenv.GqlURL(moderation),
+			subgraphs.ContextPublicDefaultDemoURL, testenv.GqlURL(public),
+			subgraphs.ContextUsersDefaultDemoURL, testenv.GqlURL(users),
+		).Replace(testenv.ConfigWithContextsJSONTemplate)
+
+		var routerConfig nodev1.RouterConfig
+		require.NoError(t, protojson.Unmarshal([]byte(configJSON), &routerConfig))
+		require.True(t, strings.HasPrefix(routerConfig.CompatibilityVersion, "2:"), routerConfig.CompatibilityVersion)
+
+		testenv.Run(t, &testenv.Config{
+			RouterConfigJSONTemplate: configJSON,
+		}, func(t *testing.T, xEnv *testenv.Environment) {
+			res := xEnv.MakeGraphQLRequestOK(testenv.GraphQLRequest{
+				Query: `{ moderationQueues { id flaggedUsers { id profile { includeSuspended } } } }`,
+			})
+			require.JSONEq(t, `{"data":{"moderationQueues":[
+				{"id":"q1","flaggedUsers":[{"id":"u1","profile":{"includeSuspended":true}},{"id":"u2","profile":{"includeSuspended":true}}]},
+				{"id":"q2","flaggedUsers":[{"id":"u2","profile":{"includeSuspended":false}},{"id":"u3","profile":{"includeSuspended":false}}]},
+				{"id":"q3","flaggedUsers":[{"id":"u1","profile":{"includeSuspended":true}},{"id":"u4","profile":{"includeSuspended":true}}]}
+			]}}`, res.Body)
 		})
 	})
 
