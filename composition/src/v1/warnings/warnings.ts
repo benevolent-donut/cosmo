@@ -1,6 +1,7 @@
 import { Warning } from '../../warnings/types';
 import { FROM_CONTEXT, QUOTATION_JOIN } from '../../utils/string-constants';
 import type {
+  ContextualArgumentRouterVersionWarningParams,
   InvalidRepeatedComposedDirectiveWarningParams,
   OverrideDirectiveLabelArgumentWarningParams,
   PartiallyContextualArgumentWarningParams,
@@ -11,6 +12,7 @@ import type {
   UnsupportedDirectiveWarningParams,
 } from './params';
 import { type SubgraphName } from '../../types/types';
+import { CONTEXTUAL_ARGUMENTS_MINIMUM_ROUTER_VERSION } from '../../router-compatibility-version/router-compatibility-version';
 
 export function invalidOverrideTargetSubgraphNameWarning(
   targetSubgraphName: string,
@@ -324,6 +326,25 @@ export function partiallyContextualArgumentWarning({
       `". It is also defined without "@${FROM_CONTEXT}" in the subgraph "${subgraphName}".` +
       ` The argument is removed from the federated graph, so the subgraph "${subgraphName}" never receives a` +
       ` value for it.`,
+    subgraph: {
+      name: subgraphName,
+    },
+  });
+}
+
+export function contextualArgumentRouterVersionWarning({
+  argumentCoords,
+  subgraphName,
+}: ContextualArgumentRouterVersionWarningParams): Warning {
+  return new Warning({
+    message:
+      `The subgraph "${subgraphName}" defines the following argument` +
+      (argumentCoords.length > 1 ? 's' : '') +
+      ` with "@${FROM_CONTEXT}":\n "` +
+      argumentCoords.join(QUOTATION_JOIN) +
+      `"\nArguments that define "@${FROM_CONTEXT}" are only supported by router version` +
+      ` ${CONTEXTUAL_ARGUMENTS_MINIMUM_ROUTER_VERSION}+. Please note that older router versions refuse the router` +
+      ` execution config or do not send these arguments to the subgraph.`,
     subgraph: {
       name: subgraphName,
     },

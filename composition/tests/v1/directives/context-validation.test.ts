@@ -8,6 +8,7 @@ import {
   type ContextSelectionData,
   CONTEXT_FIELD_VALUE,
   contextSetterImplementsInterfaceObjectError,
+  contextualArgumentRouterVersionWarning,
   contextualArgumentWithoutLocalKeyErrorMessage,
   contextualArgumentWithoutResolvableKeyErrorMessage,
   directiveInContextSelectionErrorMessage,
@@ -77,7 +78,6 @@ import {
   unresolvableContextFragmentErrorMessage,
   type UnresolvableFieldData,
   unresolvablePathError,
-  unsupportedDirectiveWarning,
   unusedContextTypeConditionErrorMessage,
   variableInContextSelectionErrorMessage,
 } from '../../../src';
@@ -119,10 +119,7 @@ describe('@context and @fromContext validation tests', () => {
           contextNameUnderscoreErrorMessage('user_scope'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NAME_INVALID: returns an error if a context name starts with an underscore', () => {
@@ -150,10 +147,7 @@ describe('@context and @fromContext validation tests', () => {
           contextNameUnderscoreErrorMessage('_userScope'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NAME_INVALID: returns an error for the second instance of @context if its name contains an underscore', () => {
@@ -181,10 +175,7 @@ describe('@context and @fromContext validation tests', () => {
           contextNameUnderscoreErrorMessage('queue_scope'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NAME_INVALID: returns an error if an unreferenced context name contains a hyphen', () => {
@@ -212,10 +203,7 @@ describe('@context and @fromContext validation tests', () => {
           invalidContextNameErrorMessage('user-scope'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NAME_INVALID: returns an error if a referenced context name contains a hyphen', () => {
@@ -247,10 +235,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NAME_INVALID: returns an error if a context name starts with a digit', () => {
@@ -282,10 +267,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NAME_INVALID: returns an error if a context name is empty', () => {
@@ -315,10 +297,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
   });
 
@@ -349,10 +328,7 @@ describe('@context and @fromContext validation tests', () => {
           fromContextOnDirectiveDefinitionArgumentErrorMessage,
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error for each instance of @fromContext that is repeated on an argument of a directive definition', () => {
@@ -388,10 +364,7 @@ describe('@context and @fromContext validation tests', () => {
           fromContextOnDirectiveDefinitionArgumentErrorMessage,
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error if @fromContext with a field value that is not a string is defined on an argument of a directive definition', () => {
@@ -420,10 +393,7 @@ describe('@context and @fromContext validation tests', () => {
           fromContextOnDirectiveDefinitionArgumentErrorMessage,
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error if @fromContext is defined on an argument of an Interface field without an implementation', () => {
@@ -452,10 +422,7 @@ describe('@context and @fromContext validation tests', () => {
           fromContextOnInterfaceFieldErrorMessage('Profiled.profile'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error if @fromContext is defined on an argument of an Interface field that an implementation does not define', () => {
@@ -498,10 +465,7 @@ describe('@context and @fromContext validation tests', () => {
           fromContextOnInterfaceFieldErrorMessage('Profiled.profile'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error if @fromContext is defined on the implementation of an Interface field', () => {
@@ -549,10 +513,7 @@ describe('@context and @fromContext validation tests', () => {
           new Map<string, ImplementationErrors>([['Profiled', implementationErrors]]),
         ),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error for each Interface if only the implementation field defines a contextual argument', () => {
@@ -604,10 +565,7 @@ describe('@context and @fromContext validation tests', () => {
           ]),
         ),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error if an argument that defines @fromContext defines a default value', () => {
@@ -635,10 +593,7 @@ describe('@context and @fromContext validation tests', () => {
           fromContextDefaultValueErrorMessage,
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error if an argument that defines @fromContext defines a null default value', () => {
@@ -666,10 +621,7 @@ describe('@context and @fromContext validation tests', () => {
           fromContextDefaultValueErrorMessage,
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if @fromContext is defined on an argument of a field of an @interfaceObject type', () => {
@@ -697,10 +649,7 @@ describe('@context and @fromContext validation tests', () => {
           fromContextOnInterfaceObjectFieldErrorMessage('User'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
   });
 
@@ -731,10 +680,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('NO_CONTEXT_IN_SELECTION: returns an error if the reference defines no selection', () => {
@@ -763,10 +709,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('NO_CONTEXT_IN_SELECTION: returns an error if the reference defines no context name', () => {
@@ -795,10 +738,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('NO_CONTEXT_IN_SELECTION: returns an error if @fromContext does not define the field argument', () => {
@@ -827,10 +767,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('NO_CONTEXT_IN_SELECTION: returns an error if the field argument of @fromContext is null', () => {
@@ -859,10 +796,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if the field argument of @fromContext is not a string', () => {
@@ -891,10 +825,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error if the referenced context is never set', () => {
@@ -923,10 +854,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NOT_SET: returns an error if the referenced context is only set in another subgraph', () => {
@@ -981,10 +909,7 @@ describe('@context and @fromContext validation tests', () => {
           invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'moderation' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
   });
 
@@ -1014,10 +939,7 @@ describe('@context and @fromContext validation tests', () => {
           multipleContextSelectionFieldsErrorMessage('{ id includeSuspended }'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a field selection is followed by an inline fragment', () => {
@@ -1045,10 +967,7 @@ describe('@context and @fromContext validation tests', () => {
           multipleContextSelectionFieldsErrorMessage('includeSuspended ... on ModerationQueue { includeSuspended }'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if an inline fragment is followed by a field selection', () => {
@@ -1076,10 +995,7 @@ describe('@context and @fromContext validation tests', () => {
           mixedContextSelectionErrorMessage('... on ModerationQueue { includeSuspended } id'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if top-level inline fragments repeat a type condition', () => {
@@ -1110,10 +1026,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a top-level inline fragment defines no type condition', () => {
@@ -1141,10 +1054,7 @@ describe('@context and @fromContext validation tests', () => {
           contextFragmentWithoutTypeConditionErrorMessage('... { includeSuspended }'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines a fragment spread', () => {
@@ -1173,10 +1083,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if an inline fragment body defines a fragment spread', () => {
@@ -1205,10 +1112,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines empty braces', () => {
@@ -1240,10 +1144,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection is only whitespace', () => {
@@ -1272,10 +1173,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines two selection sets', () => {
@@ -1307,10 +1205,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selected field is not defined in the subgraph', () => {
@@ -1346,10 +1241,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selected field is not defined on a second setter type', () => {
@@ -1387,10 +1279,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a Union setter type is selected without a type condition', () => {
@@ -1425,10 +1314,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a composite field is selected without a selection set', () => {
@@ -1468,10 +1354,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a leaf field defines a selection set', () => {
@@ -1509,10 +1392,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a nested selection selects a field that is not defined', () => {
@@ -1545,10 +1425,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a type-conditioned selection selects a field that is not defined', () => {
@@ -1586,10 +1463,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection passes an argument to __typename', () => {
@@ -1622,10 +1496,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if __typename defines a selection set', () => {
@@ -1659,10 +1530,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection passes an unknown argument', () => {
@@ -1699,10 +1567,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a field with an unknown argument precedes another field of the selection', () => {
@@ -1745,10 +1610,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if __typename with an argument precedes another field of the selection', () => {
@@ -1789,10 +1651,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a list argument with a variable precedes another field of the selection', () => {
@@ -1828,10 +1687,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection does not pass a required argument', () => {
@@ -1870,10 +1726,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection passes an invalid argument value', () => {
@@ -1914,10 +1767,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection uses a variable', () => {
@@ -1950,10 +1800,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines a custom directive', () => {
@@ -1985,10 +1832,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines @skip', () => {
@@ -2019,10 +1863,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines @include', () => {
@@ -2053,10 +1894,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines @defer', () => {
@@ -2087,10 +1925,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selected field defines an undefined directive', () => {
@@ -2122,10 +1957,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if an inline fragment of the selection defines an undefined directive', () => {
@@ -2160,10 +1992,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a nested field of the selection defines an undefined directive', () => {
@@ -2195,10 +2024,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.owner'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines an alias', () => {
@@ -2226,10 +2052,7 @@ describe('@context and @fromContext validation tests', () => {
           aliasInContextSelectionErrorMessage({ alias: 'inc', selection: '{ inc: includeSuspended }' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a nested selection defines an alias', () => {
@@ -2260,10 +2083,7 @@ describe('@context and @fromContext validation tests', () => {
           aliasInContextSelectionErrorMessage({ alias: 'ownerId', selection: '{ owner { ownerId: id } }' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a setter type is declared @interfaceObject', () => {
@@ -2294,10 +2114,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection visits a type declared @interfaceObject', () => {
@@ -2328,10 +2145,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selected type differs from the argument type', () => {
@@ -2364,10 +2178,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the argument is a list and the selected field is not', () => {
@@ -2400,10 +2211,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the selected field of a second setter type has a different type', () => {
@@ -2437,10 +2245,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a list argument defines non-null items', () => {
@@ -2475,10 +2280,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the argument is an Input Object', () => {
@@ -2512,10 +2314,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a type condition does not exist', () => {
@@ -2551,10 +2350,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a type condition is an Interface', () => {
@@ -2593,10 +2389,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if no type condition applies to a setter type', () => {
@@ -2629,10 +2422,7 @@ describe('@context and @fromContext validation tests', () => {
         ]),
         invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if an inline fragment body defines an inline fragment', () => {
@@ -2663,10 +2453,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if the type of an inline fragment body differs from the argument type', () => {
@@ -2699,10 +2486,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: returns an error if a type condition applies to no setter type', () => {
@@ -2734,10 +2518,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if a nested selection selects several fields', () => {
@@ -2772,10 +2553,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if the merged selections of a repeated field select several fields', () => {
@@ -2812,10 +2590,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if a selection selects a field twice with different arguments', () => {
@@ -2855,10 +2630,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: composes if an unreferenced context is set on an @interfaceObject type', () => {
@@ -2883,7 +2655,7 @@ describe('@context and @fromContext validation tests', () => {
         ],
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
-      expect(warnings).toStrictEqual([unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' })]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_INVALID_SELECTION: composes if the selection passes a valid argument', () => {
@@ -2934,8 +2706,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.rank(count: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -2985,8 +2759,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.queueKind(kind: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
   });
@@ -3017,10 +2793,7 @@ describe('@context and @fromContext validation tests', () => {
           contextualArgumentWithoutResolvableKeyErrorMessage('User'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NO_RESOLVABLE_KEY: returns an error if the type of a contextual argument field defines only unresolvable keys', () => {
@@ -3048,10 +2821,7 @@ describe('@context and @fromContext validation tests', () => {
           contextualArgumentWithoutResolvableKeyErrorMessage('User'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NO_RESOLVABLE_KEY: returns an error if a Query field defines a contextual argument', () => {
@@ -3080,10 +2850,7 @@ describe('@context and @fromContext validation tests', () => {
           contextualArgumentWithoutResolvableKeyErrorMessage('Query'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('CONTEXT_NO_RESOLVABLE_KEY: returns an error for each contextual argument of a field on a type without a resolvable key', () => {
@@ -3120,10 +2887,7 @@ describe('@context and @fromContext validation tests', () => {
           contextualArgumentWithoutResolvableKeyErrorMessage('Holder'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): returns an error if every key of the type of a contextual argument field selects an @external field', () => {
@@ -3151,10 +2915,7 @@ describe('@context and @fromContext validation tests', () => {
           contextualArgumentWithoutLocalKeyErrorMessage({ externalFieldCoords: ['User.id'], typeName: 'User' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): returns an error if every key of the type of a contextual argument field selects a nested @external field', () => {
@@ -3184,10 +2945,7 @@ describe('@context and @fromContext validation tests', () => {
           contextualArgumentWithoutLocalKeyErrorMessage({ externalFieldCoords: ['Organization.id'], typeName: 'User' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): composes if the only key field is an @external key field of an entity extension', () => {
@@ -3235,9 +2993,11 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
         externalEntityExtensionKeyFieldWarning('User', 'id', ['User.id'], 'users'),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
   });
@@ -3269,10 +3029,7 @@ describe('@context and @fromContext validation tests', () => {
           rootOperationTypeContextErrorMessage({ operationType: OperationTypeNode.MUTATION, typeName: 'Mutation' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if the Mutation type is the only setter type of a referenced context', () => {
@@ -3301,10 +3058,7 @@ describe('@context and @fromContext validation tests', () => {
           rootOperationTypeContextErrorMessage({ operationType: OperationTypeNode.MUTATION, typeName: 'Mutation' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if a mutation root type declared in a schema definition sets a referenced context', () => {
@@ -3334,10 +3088,7 @@ describe('@context and @fromContext validation tests', () => {
           rootOperationTypeContextErrorMessage({ operationType: OperationTypeNode.MUTATION, typeName: 'UserMutation' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if the Subscription type sets a referenced context', () => {
@@ -3369,10 +3120,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('returns an error if the Subscription type is the only setter type of a referenced context', () => {
@@ -3404,10 +3152,7 @@ describe('@context and @fromContext validation tests', () => {
           }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('composes if the Mutation type sets an unreferenced context', () => {
@@ -3457,8 +3202,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
   });
@@ -3489,10 +3236,7 @@ describe('@context and @fromContext validation tests', () => {
           invalidDirectiveLocationErrorMessage(CONTEXT, 'FIELD_DEFINITION'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('INVALID_GRAPHQL: returns an error if @fromContext is defined on an Input Object field', () => {
@@ -3521,10 +3265,7 @@ describe('@context and @fromContext validation tests', () => {
           invalidDirectiveLocationErrorMessage(FROM_CONTEXT, 'INPUT_FIELD_DEFINITION'),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('INVALID_GRAPHQL: returns an error if @fromContext is repeated on an argument', () => {
@@ -3552,10 +3293,7 @@ describe('@context and @fromContext validation tests', () => {
           invalidRepeatedDirectiveErrorMessage(FROM_CONTEXT),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('INVALID_GRAPHQL: returns an error if @context does not define a name', () => {
@@ -3583,10 +3321,7 @@ describe('@context and @fromContext validation tests', () => {
           undefinedRequiredArgumentsErrorMessage(CONTEXT, [NAME], []),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('INVALID_LINK_DIRECTIVE_USAGE: composes if @context and @fromContext are imported from federation v2.7', () => {
@@ -3634,8 +3369,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -3684,8 +3421,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
   });
@@ -3740,8 +3479,10 @@ describe('@context and @fromContext validation tests', () => {
         requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['public']),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -3795,8 +3536,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -3846,8 +3589,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
         partiallyContextualArgumentWarning({
           coords: 'User.profile(includeSuspended: ...)',
           fromContextSubgraphNames: ['users'],
@@ -3902,8 +3647,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
         partiallyContextualArgumentWarning({
           coords: 'User.profile(includeSuspended: ...)',
           fromContextSubgraphNames: ['users'],
@@ -3958,8 +3705,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
         partiallyContextualArgumentWarning({
           coords: 'User.profile(includeSuspended: ...)',
           fromContextSubgraphNames: ['users'],
@@ -4014,8 +3763,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
         partiallyContextualArgumentWarning({
           coords: 'User.profile(includeSuspended: ...)',
           fromContextSubgraphNames: ['users'],
@@ -4070,8 +3821,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
         partiallyContextualArgumentWarning({
           coords: 'User.profile(includeSuspended: ...)',
           fromContextSubgraphNames: ['users'],
@@ -4135,8 +3888,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
         partiallyContextualArgumentWarning({
           coords: 'User.profile(includeSuspended: ...)',
           fromContextSubgraphNames: ['users'],
@@ -4208,8 +3963,10 @@ describe('@context and @fromContext validation tests', () => {
         requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['public']),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
         partiallyContextualArgumentWarning({
           coords: 'User.profile(includeSuspended: ...)',
           fromContextSubgraphNames: ['users'],
@@ -4267,8 +4024,10 @@ describe('@context and @fromContext validation tests', () => {
         requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['public', 'users']),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4318,8 +4077,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4371,8 +4132,10 @@ describe('@context and @fromContext validation tests', () => {
         requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['users']),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4424,8 +4187,10 @@ describe('@context and @fromContext validation tests', () => {
         requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['users']),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4479,8 +4244,10 @@ describe('@context and @fromContext validation tests', () => {
         requiredContextArgumentError('Ticket.locale(region: ...)', ['queues'], ['queues']),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'queues' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'queues' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['Ticket.assignee(level: ...)', 'Ticket.locale(region: ...)'],
+          subgraphName: 'queues',
+        }),
       ]);
     });
 
@@ -4515,8 +4282,10 @@ describe('@context and @fromContext validation tests', () => {
         requiredContextArgumentError('Ticket.locale(region: ...)', ['queues'], ['queues']),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'queues' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'queues' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['Ticket.locale(region: ...)'],
+          subgraphName: 'queues',
+        }),
       ]);
     });
   });
@@ -4575,8 +4344,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4633,8 +4404,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4692,8 +4465,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4751,8 +4526,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4811,8 +4588,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.ownerNote(level: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4848,8 +4627,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4909,8 +4690,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(severity: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -4967,8 +4750,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5028,8 +4813,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.profile(hideSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5078,8 +4865,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5128,8 +4917,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5178,8 +4969,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
   });
@@ -5242,8 +5035,10 @@ describe('@context and @fromContext validation tests', () => {
         }),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5294,7 +5089,7 @@ describe('@context and @fromContext validation tests', () => {
         ],
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
-      expect(warnings).toStrictEqual([unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' })]);
+      expect(warnings).toStrictEqual([]);
     });
   });
 
@@ -5364,8 +5159,10 @@ describe('@context and @fromContext validation tests', () => {
         ),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5434,8 +5231,10 @@ describe('@context and @fromContext validation tests', () => {
         ),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5506,8 +5305,7 @@ describe('@context and @fromContext validation tests', () => {
         ),
       ]);
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({ argumentCoords: ['User.profile(level: ...)'], subgraphName: 'users' }),
       ]);
     });
   });
@@ -5558,8 +5356,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
       expect(schemaToSortedNormalizedString(federatedGraphClientSchema)).toBe(
         normalizeString(`
@@ -5642,8 +5442,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
       expect(schemaToSortedNormalizedString(federatedGraphClientSchema)).toBe(
         normalizeString(`
@@ -5723,8 +5525,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5774,8 +5578,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5825,8 +5631,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5876,8 +5684,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5927,8 +5737,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['ModerationQueue.summary(includeSuspended: ...)', 'User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -5979,8 +5791,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['ModerationQueue.summary(includeSuspended: ...)', 'User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6030,10 +5844,14 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.badge(includeSuspended: ...)'],
+          subgraphName: 'public',
+        }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6083,10 +5901,14 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'zpublic' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'zpublic' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.badge(includeSuspended: ...)'],
+          subgraphName: 'zpublic',
+        }),
       ]);
     });
 
@@ -6136,9 +5958,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6188,9 +6011,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'zpublic' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6240,8 +6064,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'queues' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'queues' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['Ticket.assignee(level: ...)', 'Ticket.locale(region: ...)'],
+          subgraphName: 'queues',
+        }),
       ]);
     });
 
@@ -6291,8 +6117,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6342,8 +6170,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6392,8 +6222,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6443,8 +6275,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6494,10 +6328,14 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.badge(includeSuspended: ...)'],
+          subgraphName: 'public',
+        }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6547,10 +6385,14 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['Comment.text(flagged: ...)'],
+          subgraphName: 'public',
+        }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6601,10 +6443,14 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'public' }),
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'public',
+        }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6658,8 +6504,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.standing(status: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6709,8 +6557,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6759,8 +6609,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6811,8 +6663,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.peers(ids: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6864,8 +6718,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.labeled(labels: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6915,8 +6771,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.queueBadge(queueId: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -6967,8 +6825,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7019,8 +6879,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7074,8 +6936,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.ownerNote(ownerId: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7129,8 +6993,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.ownerNote(ownerId: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7193,8 +7059,14 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: [
+            'User.profile(includeSuspended: ...)',
+            'User.ownerNote(ownerId: ...)',
+            'User.activeOwnerNote(ownerId: ...)',
+          ],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7245,8 +7117,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7295,8 +7169,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7345,8 +7221,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7402,8 +7280,15 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: [
+            'User.profile(includeSuspended: ...)',
+            'User.compact(v: ...)',
+            'User.multiline(v: ...)',
+            'User.commented(v: ...)',
+          ],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7441,8 +7326,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7493,8 +7380,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7543,8 +7432,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7595,8 +7486,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7645,8 +7538,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)', 'User.profile(queueId: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -7696,8 +7591,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
   });

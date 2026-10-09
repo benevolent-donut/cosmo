@@ -169,7 +169,11 @@ import {
 } from '../../schema-building/utils';
 
 import { renameRootTypes } from './walkers';
-import { validateContextualArgumentInstances, validateFederatedContexts } from './contexts';
+import {
+  addContextualArgumentConfigurations,
+  validateContextualArgumentInstances,
+  validateFederatedContexts,
+} from './contexts';
 import { cloneDeep } from 'lodash';
 import {
   DivergentType,
@@ -273,6 +277,7 @@ export class FederationFactory {
   clientDefinitions: Array<MutableDefinitionNode | DefinitionNode> = [];
   currentSubgraphName = '';
   concreteTypeNamesByAbstractTypeName: Map<TypeName, Set<TypeName>>;
+  contextualArgumentCoords = new Set<string>();
   subgraphNamesByNamedTypeNameByFieldCoords = new Map<string, Map<TypeName, Set<SubgraphName>>>();
   entityDataByTypeName: Map<TypeName, EntityData>;
   entityInterfaceFederationDataByTypeName: Map<string, EntityInterfaceFederationData>;
@@ -1971,12 +1976,16 @@ export class FederationFactory {
   getValidFieldArgumentNodes(fieldData: FieldData): MutableInputValueNode[] {
     const argumentNodes: Array<MutableInputValueNode> = [];
     const argumentNames: Array<string> = [];
+    const contextualArgumentNames: Array<ArgumentName> = [];
     const invalidRequiredArguments: InvalidRequiredInputValueData[] = [];
     const fieldCoords = `${fieldData.renamedParentTypeName}.${fieldData.name}`;
     for (const [argumentName, inputValueData] of fieldData.argumentDataByName) {
       if (doesArgumentDefineFromContext(inputValueData)) {
         this.removeArgumentMergeErrors(inputValueData.federatedCoords);
         validateContextualArgumentInstances(this, fieldData, inputValueData);
+        if (this.contextualArgumentCoords.has(inputValueData.federatedCoords)) {
+          contextualArgumentNames.push(argumentName);
+        }
         continue;
       }
       if (fieldData.subgraphNames.size === inputValueData.subgraphNames.size) {
@@ -2003,13 +2012,21 @@ export class FederationFactory {
     }
     if (invalidRequiredArguments.length > 0) {
       this.errors.push(invalidRequiredInputValueError(FIELD, fieldCoords, invalidRequiredArguments));
-    } else if (argumentNames.length > 0) {
+    } else if (argumentNames.length > 0 || contextualArgumentNames.length > 0) {
       // fieldConfiguration might already exist through subscriptionFilter
-      getValueOrDefault(this.fieldConfigurationByFieldCoords, fieldCoords, () => ({
-        argumentNames,
-        fieldName: fieldData.name,
-        typeName: fieldData.renamedParentTypeName,
-      })).argumentNames = argumentNames;
+      const fieldConfiguration = getValueOrDefault(
+        this.fieldConfigurationByFieldCoords,
+        fieldCoords,
+        (): FieldConfiguration => ({
+          argumentNames,
+          fieldName: fieldData.name,
+          typeName: fieldData.renamedParentTypeName,
+        }),
+      );
+      fieldConfiguration.argumentNames = argumentNames;
+      if (contextualArgumentNames.length > 0) {
+        fieldConfiguration.contextualArgumentNames = contextualArgumentNames;
+      }
     }
     return argumentNodes;
   }
@@ -2448,6 +2465,7 @@ export class FederationFactory {
     // The named type auth data can only be pushed to the field once it has all been consolidated
     this.pushNamedTypeAuthDataToFields();
     validateFederatedContexts(this);
+    addContextualArgumentConfigurations(this);
   }
 
   validateInterfaceImplementationsAndPushToDocumentDefinitions(

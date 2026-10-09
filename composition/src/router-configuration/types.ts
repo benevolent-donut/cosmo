@@ -64,6 +64,7 @@ export type FieldConfiguration = {
   argumentNames: string[];
   fieldName: string;
   typeName: string;
+  contextualArgumentNames?: Array<ArgumentName>;
   subscriptionFilterCondition?: SubscriptionCondition;
   requiresAuthentication?: boolean;
   requiredScopes?: Array<Array<string>>;
@@ -87,10 +88,24 @@ export type RequiredFieldConfiguration = {
   disableEntityResolver?: boolean;
 };
 
+export type ContextSetterConfiguration = {
+  // An empty selection set means that the type sets the context to null.
+  selectionSet: string;
+  typeName: TypeName;
+};
+
+export type ContextualArgumentConfiguration = {
+  argumentName: ArgumentName;
+  contextName: string;
+  fieldName: FieldName;
+  setters: Array<ContextSetterConfiguration>;
+};
+
 export type ConfigurationData = {
   fieldNames: Set<FieldName>;
   isRootNode: boolean;
   typeName: TypeName;
+  contextualArguments?: Array<ContextualArgumentConfiguration>;
   entityInterfaceConcreteTypeNames?: Set<TypeName>;
   events?: EventConfiguration[];
   externalFieldNames?: Set<FieldName>;

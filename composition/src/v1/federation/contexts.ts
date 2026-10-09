@@ -10,11 +10,12 @@ import {
   missingContextAuthorizationRequirementsError,
   requiredContextArgumentError,
 } from '../../errors/errors';
-import { partiallyContextualArgumentWarning } from '../warnings/warnings';
+import { contextualArgumentRouterVersionWarning, partiallyContextualArgumentWarning } from '../warnings/warnings';
 import { type InternalSubgraph } from '../../subgraph/types';
 import { OPERATION_TO_DEFAULT, TYPENAME } from '../../utils/string-constants';
 import { getOrThrowError } from '../../utils/utils';
 import { type ArgumentName, type SubgraphName, type TypeName } from '../../types/types';
+import { type ContextSetterConfiguration } from '../../router-configuration/types';
 
 export function validateContextualArgumentInstances(
   ff: FederationFactory,
@@ -87,6 +88,71 @@ export function validateFederatedContexts(ff: FederationFactory) {
     }
   }
   ff.errors.push(...errorByMessage.values());
+}
+
+export function addContextualArgumentConfigurations(ff: FederationFactory) {
+  for (const internalSubgraph of ff.internalSubgraphBySubgraphName.values()) {
+    const argumentCoords: Array<string> = [];
+    for (const {
+      argumentName,
+      contextName,
+      fieldName,
+      parentTypeName,
+      selectionDataBySetterTypeName,
+    } of internalSubgraph.contextualArgumentDatas) {
+      const typeName = getFederatedTypeName(internalSubgraph, parentTypeName);
+      const configurationData = internalSubgraph.configurationDataByTypeName.get(typeName);
+      // A field that another subgraph overrides is not resolved by this subgraph.
+      if (!configurationData?.fieldNames.has(fieldName)) {
+        continue;
+      }
+      (configurationData.contextualArguments ??= []).push({
+        argumentName,
+        contextName,
+        fieldName,
+        setters: getContextSetterConfigurations(ff, internalSubgraph, selectionDataBySetterTypeName),
+      });
+      const coords = `${typeName}.${fieldName}(${argumentName}: ...)`;
+      argumentCoords.push(coords);
+      ff.contextualArgumentCoords.add(coords);
+    }
+    if (argumentCoords.length > 0) {
+      ff.warnings.push(contextualArgumentRouterVersionWarning({ argumentCoords, subgraphName: internalSubgraph.name }));
+    }
+  }
+}
+
+function getContextSetterConfigurations(
+  ff: FederationFactory,
+  internalSubgraph: InternalSubgraph,
+  selectionDataBySetterTypeName: Map<TypeName, ContextSelectionData>,
+): Array<ContextSetterConfiguration> {
+  const selectionSetByTypeName = new Map<TypeName, string>();
+  for (const [setterTypeName, selectionData] of selectionDataBySetterTypeName) {
+    for (const typeName of getConcreteTypeNames(ff, getFederatedTypeName(internalSubgraph, setterTypeName))) {
+      if (!selectionSetByTypeName.has(typeName)) {
+        selectionSetByTypeName.set(typeName, getContextSetterSelectionSet(internalSubgraph, selectionData, typeName));
+      }
+    }
+  }
+  return Array.from(selectionSetByTypeName, ([typeName, selectionSet]) => ({ selectionSet, typeName }));
+}
+
+function getContextSetterSelectionSet(
+  internalSubgraph: InternalSubgraph,
+  selectionData: ContextSelectionData,
+  typeName: TypeName,
+): string {
+  if (selectionData.kind === Kind.FIELD) {
+    return selectionData.fieldSet;
+  }
+  for (const [typeConditionName, fieldSet] of selectionData.fieldSetByTypeConditionName) {
+    if (getFederatedTypeName(internalSubgraph, typeConditionName) === typeName) {
+      return fieldSet;
+    }
+  }
+  // A possible type that no type condition selects sets the context to null.
+  return '';
 }
 
 function getFederatedTypeName({ operationTypes }: InternalSubgraph, typeName: TypeName): TypeName {

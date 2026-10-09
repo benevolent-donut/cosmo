@@ -7,7 +7,6 @@ import {
   CONNECT_FIELD_RESOLVER,
   CONSUMER_INACTIVE_THRESHOLD,
   CONSUMER_NAME,
-  CONTEXT,
   CONTEXT_FIELD_VALUE,
   DEPRECATED,
   EDFS_KAFKA_PUBLISH,
@@ -176,9 +175,4 @@ export const CLIENT_FEDERATED_DIRECTIVE_NAMES: ReadonlySet<DirectiveName> = new 
 
 export const IMPORT_VERSION_REGEX = /^v\d+\.\d+$/;
 
-export const UNSUPPORTED_DIRECTIVE_NAMES: ReadonlySet<DirectiveName> = new Set<DirectiveName>([
-  CACHE_TAG,
-  CONTEXT,
-  FROM_CONTEXT,
-  POLICY,
-]);
+export const UNSUPPORTED_DIRECTIVE_NAMES: ReadonlySet<DirectiveName> = new Set<DirectiveName>([CACHE_TAG, POLICY]);

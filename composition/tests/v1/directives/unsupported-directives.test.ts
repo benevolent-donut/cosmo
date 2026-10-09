@@ -7,8 +7,6 @@ import {
 } from '../../utils/utils';
 import {
   CACHE_TAG,
-  CONTEXT,
-  FROM_CONTEXT,
   overrideDirectiveLabelArgumentWarning,
   POLICY,
   ROUTER_COMPATIBILITY_VERSION_ONE,
@@ -57,7 +55,7 @@ describe('Unsupported directives test', () => {
     ]);
   });
 
-  test('that defining @context produces a warning', () => {
+  test('that defining @context does not produce a warning', () => {
     const a = createSubgraph(
       'a',
       `
@@ -78,16 +76,10 @@ describe('Unsupported directives test', () => {
       }
     `),
     );
-    expect(warnings).toHaveLength(1);
-    expect(warnings).toStrictEqual([
-      unsupportedDirectiveWarning({
-        directiveName: CONTEXT,
-        subgraphName: 'a',
-      }),
-    ]);
+    expect(warnings).toHaveLength(0);
   });
 
-  test('that defining @fromContext produces a warning', () => {
+  test('that defining @fromContext does not produce a warning during normalization', () => {
     const a = createSubgraph(
       'a',
       `
@@ -136,17 +128,7 @@ describe('Unsupported directives test', () => {
       ${OPENFED_FIELD_SET}
     `),
     );
-    expect(warnings).toHaveLength(2);
-    expect(warnings).toStrictEqual([
-      unsupportedDirectiveWarning({
-        directiveName: CONTEXT,
-        subgraphName: 'a',
-      }),
-      unsupportedDirectiveWarning({
-        directiveName: FROM_CONTEXT,
-        subgraphName: 'a',
-      }),
-    ]);
+    expect(warnings).toHaveLength(0);
   });
 
   test('that manually defining scalar ContextFieldValue does not duplicate the definition', () => {
@@ -200,17 +182,7 @@ describe('Unsupported directives test', () => {
       ${OPENFED_FIELD_SET}
     `),
     );
-    expect(warnings).toHaveLength(2);
-    expect(warnings).toStrictEqual([
-      unsupportedDirectiveWarning({
-        directiveName: CONTEXT,
-        subgraphName: 'a',
-      }),
-      unsupportedDirectiveWarning({
-        directiveName: FROM_CONTEXT,
-        subgraphName: 'a',
-      }),
-    ]);
+    expect(warnings).toHaveLength(0);
   });
 
   test('that defining @policy produces a warning', () => {

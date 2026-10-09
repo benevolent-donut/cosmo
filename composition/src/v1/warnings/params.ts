@@ -47,3 +47,8 @@ export type PartiallyContextualArgumentWarningParams = {
   fromContextSubgraphNames: Array<SubgraphName>;
   subgraphName: SubgraphName;
 };
+
+export type ContextualArgumentRouterVersionWarningParams = {
+  argumentCoords: Array<string>;
+  subgraphName: SubgraphName;
+};
