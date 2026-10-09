@@ -1705,6 +1705,135 @@ describe('@context and @fromContext validation tests', () => {
       ]);
     });
 
+    test('CONTEXT_INVALID_SELECTION: returns an error if a field with an unknown argument precedes another field of the selection', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+              owner: Moderator! @external
+            }
+            type Moderator @shareable { id: ID! }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(
+                includeSuspended: Boolean
+                  @fromContext(field: "$userScope ... on ModerationQueue { owner(scope: 1) { id } includeSuspended }")
+              ): Profile
+            }
+            type Profile { displayName: String! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.profile(includeSuspended: ...)', FIRST_ORDINAL, [
+          invalidContextSelectionForSetterErrorMessage({
+            contextName: 'userScope',
+            fieldSetErrorMessage: unexpectedArgumentErrorMessage(
+              '... on ModerationQueue { owner(scope: 1) { id } includeSuspended }',
+              'ModerationQueue.owner',
+              'scope',
+            ),
+            selection: '... on ModerationQueue { owner(scope: 1) { id } includeSuspended }',
+            setterTypeName: 'ModerationQueue',
+          }),
+        ]),
+        invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error if __typename with an argument precedes another field of the selection', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(
+                includeSuspended: Boolean
+                  @fromContext(field: "$userScope ... on ModerationQueue { __typename(size: 1) includeSuspended }")
+              ): Profile
+            }
+            type Profile { displayName: String! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.profile(includeSuspended: ...)', FIRST_ORDINAL, [
+          invalidContextSelectionForSetterErrorMessage({
+            contextName: 'userScope',
+            fieldSetErrorMessage: unexpectedArgumentErrorMessage(
+              '... on ModerationQueue { __typename(size: 1) includeSuspended }',
+              'ModerationQueue.__typename',
+              'size',
+            ),
+            selection: '... on ModerationQueue { __typename(size: 1) includeSuspended }',
+            setterTypeName: 'ModerationQueue',
+          }),
+        ]),
+        invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error if a list argument with a variable precedes another field of the selection', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+              owner(ids: [ID]): Moderator! @external
+            }
+            type Moderator @shareable { id: ID! }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(
+                includeSuspended: Boolean
+                  @fromContext(field: "$userScope ... on ModerationQueue { owner(ids: [$id]) { id } includeSuspended }")
+              ): Profile
+            }
+            type Profile { displayName: String! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.profile(includeSuspended: ...)', FIRST_ORDINAL, [
+          variableInContextSelectionErrorMessage({
+            selection: '... on ModerationQueue { owner(ids: [$id]) { id } includeSuspended }',
+            variableName: 'id',
+          }),
+        ]),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection does not pass a required argument', () => {
       const { errors, warnings } = normalizeSubgraphFailure(
         createSubgraph(

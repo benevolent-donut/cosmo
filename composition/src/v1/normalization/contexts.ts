@@ -1,4 +1,5 @@
 import {
+  type ArgumentNode,
   BREAK,
   type ConstDirectiveNode,
   type ConstValueNode,
@@ -14,6 +15,7 @@ import {
   type SelectionSetNode,
   specifiedDirectives,
   type TypeNode,
+  type ValueNode,
   visit,
 } from 'graphql';
 import { printTypeNode } from '@graphql-tools/merge';
@@ -783,9 +785,9 @@ function hasFragmentSpread(selectionSet: SelectionSetNode): boolean {
   return hasSpread;
 }
 
-function getVariableName(selectionSet: SelectionSetNode): string | undefined {
+function getVariableName(rootNode: SelectionSetNode | ValueNode): string | undefined {
   let variableName: string | undefined;
-  visit(selectionSet, {
+  visit(rootNode, {
     Variable(node) {
       variableName = node.name.value;
       return BREAK;
@@ -1083,6 +1085,9 @@ function markSelectionSetFields(
       case Kind.FIELD: {
         const fieldName = selection.name.value;
         if (fieldName === TYPENAME) {
+          if ((selection.arguments && selection.arguments.length > 0) || selection.selectionSet) {
+            return false;
+          }
           continue;
         }
         if (!isParentDataCompositeOutputType(parentData)) {
@@ -1098,11 +1103,14 @@ function markSelectionSetFields(
             nf.unvalidatedExternalFieldCoords.delete(`${concreteTypeName}.${fieldName}`);
           }
         }
-        if (!selection.selectionSet) {
-          continue;
+        if (selection.selectionSet) {
+          const namedTypeData = nf.parentDefinitionDataByTypeName.get(fieldData.namedTypeName);
+          if (!namedTypeData || !markSelectionSetFields(nf, selection.selectionSet, namedTypeData)) {
+            return false;
+          }
         }
-        const namedTypeData = nf.parentDefinitionDataByTypeName.get(fieldData.namedTypeName);
-        if (!namedTypeData || !markSelectionSetFields(nf, selection.selectionSet, namedTypeData)) {
+        // The arguments of a field are resolved after its selection set, so an invalid argument stops the walk there.
+        if (!areArgumentsResolvable(nf, fieldData, selection.arguments)) {
           return false;
         }
         continue;
@@ -1127,6 +1135,25 @@ function markSelectionSetFields(
     }
   }
   return true;
+}
+
+function areArgumentsResolvable(
+  nf: NormalizationFactory,
+  fieldData: FieldData,
+  argumentNodes: ReadonlyArray<ArgumentNode> = [],
+): boolean {
+  return argumentNodes.every(({ name, value }) => {
+    const argumentData = fieldData.argumentDataByName.get(name.value);
+    return (
+      !!argumentData &&
+      (getVariableName(value) !== undefined ||
+        isArgumentValueValid({
+          argumentValue: value as ConstValueNode,
+          parentDefinitionDataByTypeName: nf.parentDefinitionDataByTypeName,
+          typeNode: argumentData.type,
+        }))
+    );
+  });
 }
 
 function areDirectivesDefined(nf: NormalizationFactory, directiveNodes: ReadonlyArray<DirectiveNode> = []): boolean {
