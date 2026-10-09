@@ -65,7 +65,7 @@ func TestContextualArguments(t *testing.T) {
 			err := testenv.WSWriteJSON(t, conn, testenv.WebSocketMessage{
 				ID:      "1",
 				Type:    "subscribe",
-				Payload: []byte(`{"query":"subscription { queueUpdated(id: \"q1\") { id includeSuspended flaggedUsers { id profile { includeSuspended } } } }"}`),
+				Payload: []byte(`{"query":"subscription { queueUpdated(id: \"q1\") { id flaggedUsers { id profile { includeSuspended } } } }"}`),
 			})
 			require.NoError(t, err)
 
@@ -75,7 +75,7 @@ func TestContextualArguments(t *testing.T) {
 				require.NoError(t, testenv.WSReadJSON(t, conn, &message))
 				require.Equal(t, "next", message.Type)
 				require.Equal(t, "1", message.ID)
-				require.JSONEq(t, `{"data":{"queueUpdated":{"id":"q1","includeSuspended":`+value+`,"flaggedUsers":[{"id":"u1","profile":{"includeSuspended":`+value+`}}]}}}`, string(message.Payload))
+				require.JSONEq(t, `{"data":{"queueUpdated":{"id":"q1","flaggedUsers":[{"id":"u1","profile":{"includeSuspended":`+value+`}}]}}}`, string(message.Payload))
 			}
 
 			var complete testenv.WebSocketMessage
