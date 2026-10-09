@@ -61,7 +61,7 @@ Every other config keeps version 1 and does not change.
 Version 2 follows from the content of a config and is not a graph setting.
 The storage addresses described above follow the graph setting, which stays `1`.
 Version 2 configs are therefore stored at the same address as version 1 configs.
-Studio and [`wgc federated-graph version get`](/cli/federated-graph/version/get) display the graph setting.
+[`wgc federated-graph version get`](/cli/federated-graph/version/get) displays the graph setting.
 [`wgc router compatibility-version list`](/cli/router/compatibility-version/list) lists the versions available for the graph setting, which do not include version 2.
 
 Routers ROUTER_MIN_VERSION and later keep the threshold `1` for the storage address and accept execution configs up to version 2.
