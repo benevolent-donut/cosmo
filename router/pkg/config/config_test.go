@@ -181,6 +181,58 @@ engine:
 	})
 }
 
+func TestMaxContextualArgumentGroupsConfigLoading(t *testing.T) {
+	t.Run("can be set from yaml", func(t *testing.T) {
+		t.Parallel()
+
+		f := createTempFileFromFixture(t, `
+version: "1"
+
+graph:
+  token: "token"
+
+engine:
+  max_contextual_argument_groups: 10
+`)
+
+		cfg, err := LoadConfig([]string{f})
+		require.NoError(t, err)
+		require.Equal(t, 10, cfg.Config.EngineExecutionConfiguration.MaxContextualArgumentGroups)
+	})
+
+	t.Run("can be set from env", func(t *testing.T) {
+		t.Setenv("ENGINE_MAX_CONTEXTUAL_ARGUMENT_GROUPS", "20")
+
+		f := createTempFileFromFixture(t, `
+version: "1"
+
+graph:
+  token: "token"
+`)
+
+		cfg, err := LoadConfig([]string{f})
+		require.NoError(t, err)
+		require.Equal(t, 20, cfg.Config.EngineExecutionConfiguration.MaxContextualArgumentGroups)
+	})
+
+	t.Run("must be at least 1", func(t *testing.T) {
+		t.Parallel()
+
+		f := createTempFileFromFixture(t, `
+version: "1"
+
+graph:
+  token: "token"
+
+engine:
+  max_contextual_argument_groups: 0
+`)
+
+		_, err := LoadConfig([]string{f})
+		require.ErrorContains(t, err, "'/engine/max_contextual_argument_groups': minimum: got 0, want 1")
+	})
+}
+
 func TestMetricAttributeExpressionConfigLoading(t *testing.T) {
 	t.Parallel()
 

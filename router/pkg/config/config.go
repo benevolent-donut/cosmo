@@ -533,6 +533,9 @@ type EngineExecutionConfiguration struct {
 
 	ValidateRequiredExternalFields bool `envDefault:"false" env:"ENGINE_VALIDATE_REQUIRED_EXTERNAL_FIELDS" yaml:"validate_required_external_fields"`
 
+	// MaxContextualArgumentGroups limits the requests one entity fetch sends for distinct contextual argument values.
+	MaxContextualArgumentGroups int `envDefault:"100" env:"ENGINE_MAX_CONTEXTUAL_ARGUMENT_GROUPS" yaml:"max_contextual_argument_groups,omitempty"`
+
 	RelaxSubgraphOperationFieldSelectionMergingNullability bool `envDefault:"false" env:"ENGINE_RELAX_SUBGRAPH_OPERATION_FIELD_SELECTION_MERGING_NULLABILITY" yaml:"relax_subgraph_operation_field_selection_merging_nullability"`
 
 	AllowStringLiteralsForEnums bool `envDefault:"false" env:"ENGINE_ALLOW_STRING_LITERALS_FOR_ENUMS" yaml:"allow_string_literals_for_enums"`

@@ -93,6 +93,7 @@ func (b *ExecutorConfigurationBuilder) Build(ctx context.Context, opts *Executor
 		MaxSubscriptionFetchTimeout:            opts.RouterEngineConfig.Execution.SubscriptionFetchTimeout,
 		PropagateFetchReasons:                  opts.RouterEngineConfig.Execution.EnableRequireFetchReasons,
 		ValidateRequiredExternalFields:         opts.RouterEngineConfig.Execution.ValidateRequiredExternalFields,
+		MaxContextualArgumentGroups:            opts.RouterEngineConfig.Execution.MaxContextualArgumentGroups,
 		SetDeduplicationShardCountToGOMAXPROCS: true,
 		AllowCustomExtensionProperties:         opts.RouterEngineConfig.SubgraphExtensionPropagation.Enabled,
 	}

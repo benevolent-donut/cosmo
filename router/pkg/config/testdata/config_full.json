@@ -1051,6 +1051,7 @@
     "WebSocketClientPingTimeout": 30000000000,
     "WebSocketClientAckTimeout": 30000000000,
     "ValidateRequiredExternalFields": false,
+    "MaxContextualArgumentGroups": 100,
     "RelaxSubgraphOperationFieldSelectionMergingNullability": false,
     "AllowStringLiteralsForEnums": false,
     "ValidateInlineArguments": {

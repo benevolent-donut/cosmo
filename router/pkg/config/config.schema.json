@@ -4358,6 +4358,12 @@
           "default": false,
           "description": "Enables validation of resolved input field set specified as an argument for \"requires\" directive. If this field set 'points' to a nullable fields marked as external, and if router resolves such a field set with null values with errors pointing to those values, then it will not provide such entities to the resolver of the field on which directive was specified."
         },
+        "max_contextual_argument_groups": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "The maximum number of requests that one entity fetch sends to a subgraph for distinct values of contextual arguments, which are declared with the \"@fromContext\" directive. The router sends one request for each distinct combination of values. If a fetch needs more requests, the router sends none for it and returns an error for the affected fields."
+        },
         "relax_subgraph_operation_field_selection_merging_nullability": {
           "type": "boolean",
           "default": false,
