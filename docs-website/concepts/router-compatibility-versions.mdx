@@ -53,6 +53,20 @@ The router compatibility version threshold of a router dictates from where that 
 
 Please see wgc federated-graph version set for full details.
 
+## Router compatibility version 2
+
+Composition stamps router compatibility version 2 on every execution config that contains contextual arguments, which subgraphs declare with [`@fromContext`](/federation/directives/fromcontext).
+Every other config keeps version 1 and does not change.
+Version 2 follows from the content of a config and is not a graph setting.
+The graph setting stays `1`, and Studio and `wgc federated-graph version get` display that setting.
+Version 2 configs are stored at the same address as version 1 configs.
+
+Routers ROUTER_MIN_VERSION and later accept versions 1 and 2 and keep polling the version 1 address.
+Routers from 0.167.0 to the release before ROUTER_MIN_VERSION refuse version 2 configs.
+Older routers and the AWS Lambda router do not refuse them, see [Router versions](/federation/directives/fromcontext#router-versions).
+The router checks the version of the base config only.
+A feature flag with contextual arguments raises the base config to version 2, except with split-config loading, see [Feature flags with split-config loading](/federation/directives/fromcontext#feature-flags-with-split-config-loading).
+
 ## Which router compatibility versions are currently supported?
 
 Please see the router compatibility-version list command.

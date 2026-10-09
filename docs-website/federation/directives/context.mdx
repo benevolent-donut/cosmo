@@ -1,0 +1,235 @@
+---
+title: "@context"
+icon: "folder-tree"
+description: "The @context directive declares that a type sets a named context. Arguments declared with @fromContext on fields below the type read values from it."
+---
+
+## Minimum requirements
+
+| Package     | Minimum version                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| router      | [ROUTER_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/router%40ROUTER_MIN_VERSION)                                 |
+| composition | [COMPOSITION_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/%40wundergraph%2Fcomposition%40COMPOSITION_MIN_VERSION) |
+
+Execution configs that contain contextual arguments use router compatibility version 2.
+See [Router versions](/federation/directives/fromcontext#router-versions) for the behavior of older routers.
+
+## Definition
+
+```graphql
+directive @context(name: String!) repeatable on INTERFACE | OBJECT | UNION
+```
+
+## Arguments
+
+| Argument | Type      | Description                                                                             |
+| -------- | --------- | --------------------------------------------------------------------------------------- |
+| `name`   | `String!` | The name of the context. It starts with a letter and contains only letters and digits. |
+
+## Overview
+
+`@context` declares that a type sets a context with the given name.
+A field argument declared with [`@fromContext`](/federation/directives/fromcontext) references the context and a selection on the types that set it.
+The router evaluates that selection on the nearest ancestor whose type sets the context and passes the result as the argument value.
+
+- A context belongs to the subgraph that declares it.
+  Only `@fromContext` arguments of the same subgraph can reference it.
+- The directive is repeatable.
+  A type can set several contexts, and several types can set the same context.
+- On an interface or a union, every object type that implements the interface or belongs to the union sets the context.
+  This includes object types that other subgraphs define.
+- A type does not provide context values to its own fields.
+  An argument of a field on a setter type reads the context from an ancestor of the object.
+- A context that no `@fromContext` argument references has no effect.
+
+Cosmo provides the directive in every subgraph, so a [`@link`](/federation/directives/link#usage) import is optional.
+
+## Example
+
+The moderation subgraph owns moderation queues.
+Each queue decides whether its flagged users include suspended accounts.
+The users subgraph needs that decision to resolve the profile of every flagged user.
+
+```graphql
+# moderation subgraph
+type Query {
+  moderationQueue(id: ID!): ModerationQueue
+}
+
+type ModerationQueue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean!
+  flaggedUsers: [User!]!
+}
+
+type User @key(fields: "id", resolvable: false) {
+  id: ID!
+}
+```
+
+```graphql
+# public subgraph
+type Query {
+  post(id: ID!): Post
+}
+
+type Post @key(fields: "id") {
+  id: ID!
+  author: User!
+}
+
+type User @key(fields: "id", resolvable: false) {
+  id: ID!
+}
+```
+
+```graphql
+# users subgraph
+type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+  id: ID!
+  includeSuspended: Boolean! @external
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  profile(
+    includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")
+  ): Profile
+}
+
+type Profile {
+  displayName: String!
+}
+```
+
+The users subgraph declares that `ModerationQueue` sets the context `userScope`.
+The moderation subgraph resolves `includeSuspended`, so the users subgraph declares the field `@external`.
+
+In `moderationQueue(id: "q1") { flaggedUsers { profile { displayName } } }`, the router reads `includeSuspended` on the queue and passes it to `User.profile` for every flagged user.
+In `post(id: "p1") { author { profile { displayName } } }`, no ancestor sets `userScope`, so `profile` receives `null`.
+See [`@fromContext`](/federation/directives/fromcontext#example) for the subgraph requests.
+
+### Several types that set one context
+
+```graphql
+# moderation subgraph
+type Query {
+  organization(id: ID!): Organization
+}
+
+type Organization @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean
+  queues: [ModerationQueue!]!
+  members: [User!]!
+}
+```
+
+```graphql
+# users subgraph
+type Organization @key(fields: "id") @context(name: "userScope") {
+  id: ID!
+  includeSuspended: Boolean @external
+}
+```
+
+`Organization` and `ModerationQueue` both set `userScope`, and the nearest one provides the value.
+Members of an organization read the value of the organization.
+Flagged users of a queue inside the organization read the value of the queue.
+
+### Interface and union types
+
+```graphql
+# moderation subgraph
+type Query {
+  queues: [Queue!]!
+}
+
+interface Queue {
+  id: ID!
+  includeSuspended: Boolean!
+  flaggedUsers: [User!]!
+}
+
+type ModerationQueue implements Queue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean!
+  flaggedUsers: [User!]!
+}
+
+type AppealQueue implements Queue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean!
+  flaggedUsers: [User!]!
+}
+```
+
+```graphql
+# users subgraph
+interface Queue @context(name: "queueScope") {
+  id: ID!
+  includeSuspended: Boolean!
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  queueView(
+    includeSuspended: Boolean @fromContext(field: "$queueScope { includeSuspended }")
+  ): String
+}
+```
+
+`ModerationQueue` and `AppealQueue` implement `Queue`, so both set `queueScope`, although the users subgraph does not define them.
+In `queues { flaggedUsers { queueView } }`, every flagged user reads the value of its queue.
+
+A union has no fields, so a selection on a union setter uses inline fragments with type conditions.
+See [Type conditions](/federation/directives/fromcontext#type-conditions).
+
+### The Query type
+
+```graphql
+# users subgraph
+type Query @context(name: "viewer") {
+  viewerIncludeSuspended: Boolean
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  viewerView(
+    includeSuspended: Boolean @fromContext(field: "$viewer { viewerIncludeSuspended }")
+  ): String
+}
+```
+
+In a query operation, `Query` is an ancestor of every field below the root fields, so `User.viewerView` reads `viewerIncludeSuspended` wherever the operation selects it.
+The router selects `viewerIncludeSuspended` as an additional root field of the operation.
+In a mutation or subscription operation, `Query` is not an ancestor, so `viewerView` receives `null`.
+
+## Rules
+
+Composition reports a [composition error](/federation/composition-errors) for every violation of these rules.
+
+- `name` starts with a letter and contains only letters and digits. Underscores are not allowed.
+- `@context` applies to object, interface and union types.
+- The mutation and subscription root types cannot declare a context that a `@fromContext` argument references.
+  A `schema` definition decides which types are the root types. Without one, they are `Mutation` and `Subscription`.
+- An `@interfaceObject` type cannot declare a context that a `@fromContext` argument references.
+- A type that sets a referenced context cannot implement an interface that any subgraph declares `@interfaceObject`.
+- Every `@fromContext` selection that references the context is valid for each type that declares it.
+  See the [`@fromContext` rules](/federation/directives/fromcontext#rules).
+
+## Limitations
+
+- **Mutation and subscription setters**: Apollo Federation accepts a `Mutation` or `Subscription` type that sets a referenced context.
+  Cosmo rejects it.
+- **`@interfaceObject`**: Apollo Federation accepts a setter type that implements an interface that a subgraph declares `@interfaceObject`.
+  Cosmo rejects it.
+- **Router versions**: Graphs with contextual arguments need router ROUTER_MIN_VERSION or later.
+  See the [`@fromContext` limitations](/federation/directives/fromcontext#limitations) for older routers, the AWS Lambda router and feature flags with split-config loading.
+
+## See also
+
+- [`@fromContext`](/federation/directives/fromcontext) reads a value from a context.
+- [`@external`](/federation/directives/external) declares the fields that a context selection reads from another subgraph.
+- [`@key`](/federation/directives/key) declares the entity keys of setter types that other subgraphs own.
+- [Router compatibility versions](/concepts/router-compatibility-versions) describes the version handshake between execution configs and routers.

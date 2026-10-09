@@ -1,0 +1,525 @@
+---
+title: "@fromContext"
+icon: "arrow-turn-down"
+description: "The @fromContext directive marks a field argument that the router fills with a value from the nearest ancestor that sets a context."
+---
+
+## Minimum requirements
+
+| Package     | Minimum version                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| router      | [ROUTER_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/router%40ROUTER_MIN_VERSION)                                 |
+| composition | [COMPOSITION_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/%40wundergraph%2Fcomposition%40COMPOSITION_MIN_VERSION) |
+
+Execution configs that contain contextual arguments use router compatibility version 2.
+Older routers refuse these configs or serve the graph without the arguments, see [Router versions](#router-versions).
+
+## Definition
+
+```graphql
+directive @fromContext(field: ContextFieldValue) on ARGUMENT_DEFINITION
+
+scalar ContextFieldValue
+```
+
+## Arguments
+
+| Argument | Type                | Description                                                                                                                                                                      |
+| -------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `field`  | `ContextFieldValue` | `$`, the name of a context, and a selection on the types that set the context, for example `"$userScope { includeSuspended }"`. Composition fails when the argument is omitted. |
+
+## Overview
+
+`@fromContext` marks a field argument as contextual.
+A type sets a context with [`@context`](/federation/directives/context).
+The router fills a contextual argument with a value that it reads from an ancestor in the operation.
+
+- The value comes from the nearest ancestor object on the operation path whose type sets the context.
+- The selection after the context name picks the value on that ancestor.
+- Composition removes contextual arguments from the router schema and the client schema.
+  Clients cannot pass them, and an operation that sets one fails validation.
+- The subgraph schema keeps the argument.
+  The router sends the value as a variable of the argument's type in the subgraph.
+- When no ancestor on the path sets the context, the router sends `null`.
+
+A context belongs to the subgraph that declares it.
+An argument can only reference a context that a type of its own subgraph sets.
+Cosmo provides both directives in every subgraph, so a [`@link`](/federation/directives/link#usage) import is optional.
+
+## Example
+
+The moderation subgraph owns moderation queues.
+Each queue decides whether its flagged users include suspended accounts.
+The users subgraph resolves user profiles and needs that decision for every user that a queue flags.
+
+```graphql
+# moderation subgraph
+type Query {
+  moderationQueue(id: ID!): ModerationQueue
+  moderationQueues: [ModerationQueue!]!
+}
+
+type ModerationQueue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean!
+  flaggedUsers: [User!]!
+}
+
+type User @key(fields: "id", resolvable: false) {
+  id: ID!
+}
+```
+
+```graphql
+# public subgraph
+type Query {
+  post(id: ID!): Post
+}
+
+type Post @key(fields: "id") {
+  id: ID!
+  author: User!
+}
+
+type User @key(fields: "id", resolvable: false) {
+  id: ID!
+}
+```
+
+```graphql
+# users subgraph
+type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+  id: ID!
+  includeSuspended: Boolean! @external
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  profile(
+    includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")
+  ): Profile
+}
+
+type Profile {
+  displayName: String!
+}
+```
+
+The users subgraph declares that `ModerationQueue` sets the context `userScope`.
+The moderation subgraph resolves `includeSuspended`, so the users subgraph declares it `@external`.
+`User.profile` reads `includeSuspended` from the context.
+
+The client schema has no `includeSuspended` argument:
+
+```graphql
+type User {
+  id: ID!
+  profile: Profile
+}
+```
+
+### Reading a value from an ancestor
+
+```graphql
+query {
+  moderationQueue(id: "q1") {
+    flaggedUsers {
+      id
+      profile {
+        displayName
+      }
+    }
+  }
+}
+```
+
+The router selects `includeSuspended` under an internal alias in its request to the moderation subgraph.
+It then resolves `profile` with one entity request to the users subgraph and passes the value of the queue as a variable:
+
+```graphql
+query ($representations: [_Any!]!, $contextualArgument_0: Boolean) {
+  _entities(representations: $representations) {
+    ... on User {
+      __typename
+      profile(includeSuspended: $contextualArgument_0) {
+        displayName
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "representations": [
+    { "__typename": "User", "id": "u1" },
+    { "__typename": "User", "id": "u2" }
+  ],
+  "contextualArgument_0": true
+}
+```
+
+The resolver of `User.profile` reads the value from its `includeSuspended` argument.
+
+### Paths without a setter
+
+```graphql
+query {
+  post(id: "p1") {
+    author {
+      profile {
+        displayName
+      }
+    }
+  }
+}
+```
+
+`Post` does not set `userScope`, and no other ancestor of `author` does.
+The users subgraph receives `null` for `includeSuspended`.
+
+<Note>
+  Apollo Federation fails composition when a path reaches a contextual argument without a setter.
+  Cosmo composes the graph and sends `null` on that path.
+</Note>
+
+### Different values in one response
+
+```graphql
+query {
+  moderationQueues {
+    id
+    flaggedUsers {
+      id
+      profile {
+        displayName
+      }
+    }
+  }
+}
+```
+
+The moderation subgraph returns these queues:
+
+| Queue | `includeSuspended` | `flaggedUsers` |
+| ----- | ------------------ | -------------- |
+| q1    | `true`             | u1, u2         |
+| q2    | `false`            | u2, u3         |
+| q3    | `true`             | u1, u4         |
+
+The router sends one entity request to the users subgraph per distinct value:
+
+```json
+{
+  "representations": [
+    { "__typename": "User", "id": "u1" },
+    { "__typename": "User", "id": "u2" },
+    { "__typename": "User", "id": "u4" }
+  ],
+  "contextualArgument_0": true
+}
+```
+
+```json
+{
+  "representations": [
+    { "__typename": "User", "id": "u2" },
+    { "__typename": "User", "id": "u3" }
+  ],
+  "contextualArgument_0": false
+}
+```
+
+Each request lists a user once.
+u2 is part of both requests, because queues with different values flag it.
+Every flagged user in the response carries the profile that the users subgraph resolved with the value of its own queue.
+
+## Resolving the value
+
+### Nearest ancestor
+
+When several ancestors set the context, the nearest one provides the value.
+Here the organization and its queues both set `userScope`:
+
+```graphql
+# moderation subgraph
+type Query {
+  organization(id: ID!): Organization
+}
+
+type Organization @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean
+  queues: [ModerationQueue!]!
+  members: [User!]!
+}
+```
+
+```graphql
+# users subgraph
+type Organization @key(fields: "id") @context(name: "userScope") {
+  id: ID!
+  includeSuspended: Boolean @external
+}
+```
+
+In `organization(id: "o1") { members { profile { displayName } } }`, every member reads the value of the organization.
+In `organization(id: "o1") { queues { flaggedUsers { profile { displayName } } } }`, every flagged user reads the value of its queue.
+
+### Fields of the setter type
+
+A type does not provide context values to its own fields.
+The argument of a field on a setter type reads the context from an ancestor of the object:
+
+```graphql
+# users subgraph
+type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+  id: ID!
+  includeSuspended: Boolean! @external
+  summary(
+    includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")
+  ): String
+}
+```
+
+In `organization(id: "o1") { queues { summary } }`, `summary` receives the value of the organization.
+In `moderationQueue(id: "q1") { summary }`, no ancestor of the queue sets the context, so `summary` receives `null`.
+
+### Interface and union ancestors
+
+When an ancestor field returns an interface or a union, the router checks the concrete type of each object.
+An object whose type sets the context provides the value.
+For any other object, a farther ancestor provides the value, or the argument is `null`.
+
+### Type conditions
+
+When the types that set a context hold the value in different fields, the selection uses one inline fragment per type:
+
+```graphql
+# users subgraph
+union Scope @context(name: "scope") = ModerationQueue | AppealQueue | Team
+
+type ModerationQueue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean! @external
+}
+
+type AppealQueue @key(fields: "id") {
+  id: ID!
+  showSuspended: Boolean @external
+}
+
+type Team @key(fields: "id") {
+  id: ID!
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  scopeView(
+    show: Boolean
+      @fromContext(
+        field: "$scope ... on ModerationQueue { includeSuspended } ... on AppealQueue { showSuspended }"
+      )
+  ): String
+}
+```
+
+The moderation subgraph defines `Scope` with the same members and resolves `includeSuspended` and `showSuspended`.
+Below a `ModerationQueue`, `scopeView` receives `includeSuspended`.
+Below an `AppealQueue`, it receives `showSuspended`.
+Below a `Team`, it receives `null`, because the selection has no fragment on `Team`.
+
+### List values
+
+A selection that crosses a list field resolves to a list:
+
+```graphql
+# users subgraph
+type ModerationQueue @key(fields: "id") @context(name: "peerScope") {
+  id: ID!
+  flaggedUsers: [User!]! @external
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  peers(ids: [ID] @fromContext(field: "$peerScope { flaggedUsers { id } }")): String
+}
+```
+
+Below q1, `peers` receives `["u1", "u2"]`.
+
+### Null values
+
+A contextual argument is `null` when:
+
+- no ancestor on the path sets the context;
+- the selected field of the nearest setter is `null`;
+- no type condition of the selection applies to the type of the nearest setter.
+
+The subgraph receives `null` in each of these cases and cannot tell them apart.
+
+The router can fail to read the selected field on the nearest setter, for example when the request that resolves it fails.
+The router then skips the contextual field for the objects below that setter and adds an error to the response.
+
+### Operations
+
+- Queries, mutations and subscriptions can select fields with contextual arguments.
+  In a subscription, the router reads the values from each event.
+- The `Query` type can set a context. The `Mutation` and `Subscription` types cannot.
+- `@defer` works with contextual arguments.
+  The router fetches a context value together with the object that sets it, also when the client defers the selected field.
+
+## Rules
+
+Composition reports a [composition error](/federation/composition-errors) for every violation of these rules.
+
+### Placement
+
+- `@fromContext` applies to arguments of fields on object types.
+- It cannot apply to arguments of:
+  - interface fields;
+  - fields that implement an interface field;
+  - directive definitions;
+  - fields on `@interfaceObject` types.
+- The object type declares at least one `@key` in the subgraph whose `resolvable` argument is `true` or omitted.
+- The object type declares at least one `@key` in the subgraph whose fields are not `@external`.
+- Root operation types have no `@key`, so their fields cannot have contextual arguments.
+- gRPC services and router plugins cannot define contextual arguments.
+
+### Argument
+
+- The argument type is nullable at every level, list items included.
+- The argument has no default value. A default of `null` counts as a default value.
+- When another subgraph defines the same argument without `@fromContext`, that definition is nullable or has a default value.
+  Composition reports a warning, and that subgraph never receives a value for the argument.
+  The rule ignores definitions on `@external` fields.
+
+### Reference
+
+- `field` starts with `$` and the name of a context, followed by the selection.
+  The braces around the selection are optional, so `"$userScope includeSuspended"` is valid.
+- A type of the same subgraph declares the context with `@context`.
+
+### Selection
+
+In these rules, a setter type is a type of the subgraph that declares the context with `@context`.
+
+- The selection is either a single field with an optional sub-selection, or a list of inline fragments with type conditions.
+  It cannot mix fields and inline fragments at the top level.
+- A field selection, and each inline fragment, resolves to exactly one leaf field.
+  Selections such as `{ owner { id altId } }` and `... on Team { id name }` are invalid.
+- The selection is valid for every setter type.
+  Every selected field exists, its arguments are literals of the correct type, and its required arguments are present.
+  Variables are not allowed.
+- The selection contains no aliases, no fragment spreads and no directives, `@skip` and `@include` included.
+- Type conditions name distinct object types of the subgraph.
+  A type condition applies to a setter type when it names that type, one of its implementations, or one of its union members.
+- Every type condition applies to at least one setter type.
+  At least one type condition applies to every setter type.
+- The selection visits no `@interfaceObject` type.
+- The type of the leaf field equals the argument type after removing every non-null wrapper.
+  List fields on the path add list wrappers, so `{ flaggedUsers { id } }` with `flaggedUsers: [User!]!` and `id: ID!` resolves to `[ID]`.
+- The selected fields follow the field sharing rules of federation.
+  A selected field that another subgraph resolves is declared `@external` on an entity with a `@key`, and composition counts it as used.
+
+### Authorization
+
+- The field with the contextual argument or its parent type declares at least the `@authenticated` and `@requiresScopes` requirements of:
+  - every setter type;
+  - every selected field and its return type;
+  - every type condition.
+
+## Limitations
+
+### Composition
+
+- **Paths without a setter**: The router sends `null`.
+  Apollo Federation fails composition for such a path.
+- **Schemas that Apollo Federation accepts**: Composition rejects these shapes.
+  - The `Mutation` or `Subscription` type sets a context that a `@fromContext` argument references.
+  - `@fromContext` applies to an argument of a field on an `@interfaceObject` type.
+  - A type that sets a referenced context implements an interface that a subgraph declares `@interfaceObject`.
+  - A selection resolves to several fields.
+- **gRPC services and router plugins**: Contextual arguments work in GraphQL subgraphs only.
+  Composition fails when a [gRPC service or router plugin](/router/gRPC/concepts) defines one.
+
+### Execution
+
+- **Requests per value**: An entity fetch of a field with contextual arguments sends one request per distinct value.
+  With several contextual arguments on one field, it sends one request per distinct combination of values.
+  The router sends up to 16 of these requests at a time, and each request records its own fetch span and subgraph metrics.
+  A context that selects a value unique to each object, such as an ID, produces one request per setter object.
+- **Additional entity requests**: When a setter can be on the path, the router resolves a field with contextual arguments through an entity fetch on the parent objects of the field.
+  When the parent objects come from another subgraph, the field joins the entity fetch that the router sends anyway.
+  When they come from the subgraph of the field, the entity fetch costs one more request to that subgraph.
+- **Multi-fetch**: With `engine.enable_multi_fetch`, the router merges entity fetches to the same subgraph into one request.
+  It never merges entity fetches of fields with contextual arguments.
+- **Rate limiting**: The [subgraph rate limiter](/router/configuration#rate-limiting) counts a planned fetch once, whatever the number of requests it sends.
+- **Tracing**: For a fetch that sends several requests, the trace views of the [Studio playground](/studio/playground) show only the first request.
+
+`engine.max_contextual_argument_groups` limits the number of distinct values per fetch. The default is 100.
+For a fetch above the limit, the router sends no request and returns an error that names the subgraph, the number of distinct values and the limit.
+
+```yaml config.yaml
+engine:
+  max_contextual_argument_groups: 100
+```
+
+Environment variable: `ENGINE_MAX_CONTEXTUAL_ARGUMENT_GROUPS`.
+
+### Router versions
+
+Composition stamps every execution config that contains contextual arguments with [router compatibility version](/concepts/router-compatibility-versions) 2.
+Configs without contextual arguments keep version 1.
+Composition warns about the minimum router version for every subgraph that uses the directives.
+
+| Router                                           | Behavior with a config that contains contextual arguments                                                                  |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| ROUTER_MIN_VERSION and later                     | Accepts the config and fills contextual arguments.                                                                         |
+| 0.167.0 to the release before ROUTER_MIN_VERSION | Refuses the config. A router that starts with it fails to start. A running router keeps its last accepted config.         |
+| 0.166.0                                          | Serves the graph and never sends contextual arguments. Refuses the config when a watched execution config file changes to it. |
+| 0.85.1 to 0.165.x                                | Serves the graph and never sends contextual arguments.                                                                     |
+| Before 0.85.1                                    | Fails to load the config.                                                                                                  |
+
+A running router that polls for configs logs the rejection on every poll.
+From router 0.211.0, a [config reload](/router/configuration#config-watcher-hot-reloading) restarts the router, so a router that refuses the config exits on a reload.
+The `query-plan` command of routers before ROUTER_MIN_VERSION prints plans without contextual arguments.
+
+Upgrade in this order:
+
+1. Upgrade every router that serves the graph to ROUTER_MIN_VERSION or later.
+2. Publish the subgraphs that use `@context` and `@fromContext`.
+
+Graphs that already define contextual arguments receive version 2 at their first composition with composition COMPOSITION_MIN_VERSION or later.
+An unrelated change that triggers a composition is enough.
+Removing every `@fromContext` argument from a graph and its feature flags returns its configs to version 1.
+
+### AWS Lambda router
+
+The [AWS Lambda version of the router](/self-hosted#self-hosting-cosmo-router) does not support contextual arguments.
+It does not check the router compatibility version.
+It serves graphs that use the directives and never sends contextual arguments to subgraphs.
+
+### Feature flags with split-config loading
+
+The router checks the router compatibility version of the base config only.
+Without split-config loading, one execution config contains the base graph and all feature flags.
+Composition stamps it with version 2 when the base graph or any feature flag contains contextual arguments.
+Routers that refuse version 2 then refuse the whole config.
+
+With [split-config loading](/router/configuration#split-config-poller), the version of the base config reflects the base graph only.
+When contextual arguments appear only in a feature subgraph, the base config keeps version 1.
+Routers from 0.315.0 to the release before ROUTER_MIN_VERSION then accept the graph and serve the traffic of that feature flag without contextual arguments.
+Composition still warns about the minimum router version for the feature subgraph.
+
+Upgrade every router to ROUTER_MIN_VERSION or later before you publish a feature subgraph with `@fromContext`.
+When the base graph contains contextual arguments, its base config carries version 2.
+Routers that refuse version 2 then refuse the graph with all of its feature flags.
+
+## See also
+
+- [`@context`](/federation/directives/context) declares the types that set a context.
+- [`@key`](/federation/directives/key) declares the entity keys that contextual arguments require.
+- [`@external`](/federation/directives/external) declares the fields that a context selection reads from another subgraph.
+- [`@requires`](/federation/directives/requires) reads fields of the same entity from other subgraphs.
+- [Router compatibility versions](/concepts/router-compatibility-versions) describes the version handshake between execution configs and routers.

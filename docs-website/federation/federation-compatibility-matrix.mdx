@@ -48,3 +48,14 @@ description: "The following list gives you an Overview of the compatibility betw
 |-----------|-------|
 | [@authenticated](/federation/directives/authenticated) | Supported |
 | [@requiresScopes](/federation/directives/requiresscopes) | Supported |
+
+### 2.8
+
+| Directive | State |
+|-----------|-------|
+| [@context](/federation/directives/context) | Supported |
+| [@fromContext](/federation/directives/fromcontext) | Supported |
+
+Both directives require router ROUTER_MIN_VERSION or later.
+Cosmo sends `null` for a contextual argument without a setter on the path and rejects some schemas that Apollo Federation accepts.
+See the [`@fromContext` limitations](/federation/directives/fromcontext#limitations).
