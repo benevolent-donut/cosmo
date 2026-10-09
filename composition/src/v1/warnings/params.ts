@@ -41,3 +41,9 @@ export type OverrideDirectiveLabelArgumentWarningParams = {
   coords: string;
   subgraphName: SubgraphName;
 };
+
+export type PartiallyContextualArgumentWarningParams = {
+  coords: string;
+  fromContextSubgraphNames: Array<SubgraphName>;
+  subgraphName: SubgraphName;
+};

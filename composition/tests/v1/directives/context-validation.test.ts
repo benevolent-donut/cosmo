@@ -6,11 +6,14 @@ import {
   contextFragmentWithoutTypeConditionErrorMessage,
   contextNameUnderscoreErrorMessage,
   type ContextSelectionData,
+  contextSetterImplementsInterfaceObjectError,
   contextualArgumentWithoutLocalKeyErrorMessage,
   contextualArgumentWithoutResolvableKeyErrorMessage,
   directiveInContextSelectionErrorMessage,
   duplicateContextTypeConditionErrorMessage,
+  type EntityAncestorData,
   externalEntityExtensionKeyFieldWarning,
+  type FieldData,
   FIRST_ORDINAL,
   fragmentSpreadInContextSelectionErrorMessage,
   FROM_CONTEXT,
@@ -18,7 +21,10 @@ import {
   fromContextOnDirectiveDefinitionArgumentErrorMessage,
   fromContextOnInterfaceFieldErrorMessage,
   fromContextOnInterfaceObjectFieldErrorMessage,
+  generateResolvabilityErrorReasons,
+  generateSelectionSetSegments,
   Graph,
+  type GraphFieldData,
   type ImplementationErrors,
   incompatibleContextSelectionTypeErrorMessage,
   INTERFACE,
@@ -30,21 +36,29 @@ import {
   invalidDirectiveLocationErrorMessage,
   invalidExternalDirectiveError,
   type InvalidFieldImplementation,
+  invalidFieldShareabilityError,
   invalidInterfaceImplementationError,
   invalidRepeatedDirectiveErrorMessage,
   invalidSelectionOnUnionErrorMessage,
   invalidSelectionSetDefinitionErrorMessage,
   invalidSelectionSetErrorMessage,
+  missingContextAuthorizationRequirementsError,
   mixedContextSelectionErrorMessage,
   multipleContextSelectionDefinitionsErrorMessage,
   multipleContextSelectionFieldsErrorMessage,
   multipleContextSelectionLeavesErrorMessage,
   NAME,
+  newRootFieldData,
   noApplicableContextTypeConditionErrorMessage,
   nonObjectContextTypeConditionErrorMessage,
   numberToOrdinal,
   OBJECT,
+  type ObjectDefinitionData,
   parse,
+  partiallyContextualArgumentWarning,
+  QUERY,
+  renderSelectionSet,
+  requiredContextArgumentError,
   rootOperationTypeContextErrorMessage,
   ROUTER_COMPATIBILITY_VERSION_ONE,
   SCALAR,
@@ -59,6 +73,8 @@ import {
   unknownContextTypeConditionErrorMessage,
   unparsableContextSelectionErrorMessage,
   unresolvableContextFragmentErrorMessage,
+  type UnresolvableFieldData,
+  unresolvablePathError,
   unsupportedDirectiveWarning,
   unusedContextTypeConditionErrorMessage,
   variableInContextSelectionErrorMessage,
@@ -2993,6 +3009,1675 @@ describe('@context and @fromContext validation tests', () => {
         ],
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+  });
+
+  describe('contextual arguments across subgraphs', () => {
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns an error if another subgraph defines the argument as non-null without a default value', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: Boolean!): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['public']),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: composes if another subgraph defines the argument as non-null on an @external field', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@external", "@requires"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean!): Profile @external
+                label: String @requires(fields: "profile(includeSuspended: true) { displayName }")
+              }
+              type Profile { displayName: String! @external }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns a warning if another subgraph defines the argument as nullable', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: Boolean): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        partiallyContextualArgumentWarning({
+          coords: 'User.profile(includeSuspended: ...)',
+          fromContextSubgraphNames: ['users'],
+          subgraphName: 'public',
+        }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns a warning if another subgraph defines the argument as non-null with a default value', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: Boolean! = false): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        partiallyContextualArgumentWarning({
+          coords: 'User.profile(includeSuspended: ...)',
+          fromContextSubgraphNames: ['users'],
+          subgraphName: 'public',
+        }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns a warning if another subgraph defines the argument with a different type', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: String): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        partiallyContextualArgumentWarning({
+          coords: 'User.profile(includeSuspended: ...)',
+          fromContextSubgraphNames: ['users'],
+          subgraphName: 'public',
+        }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns a warning if another subgraph defines the argument with a list type', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: [Boolean]): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        partiallyContextualArgumentWarning({
+          coords: 'User.profile(includeSuspended: ...)',
+          fromContextSubgraphNames: ['users'],
+          subgraphName: 'public',
+        }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns a warning whatever the subgraph order if another subgraph defines the argument with a different type', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: String): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        partiallyContextualArgumentWarning({
+          coords: 'User.profile(includeSuspended: ...)',
+          fromContextSubgraphNames: ['users'],
+          subgraphName: 'public',
+        }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns a warning for each subgraph that defines the argument without @fromContext, whatever its default value', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: Boolean = true): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'reports',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { reports: Int }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: Boolean = false): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        partiallyContextualArgumentWarning({
+          coords: 'User.profile(includeSuspended: ...)',
+          fromContextSubgraphNames: ['users'],
+          subgraphName: 'public',
+        }),
+        partiallyContextualArgumentWarning({
+          coords: 'User.profile(includeSuspended: ...)',
+          fromContextSubgraphNames: ['users'],
+          subgraphName: 'reports',
+        }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns an error and a warning if one subgraph defines the argument as non-null and another as nullable', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: Boolean!): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'reports',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { reports: Int }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: Boolean): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['public']),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        partiallyContextualArgumentWarning({
+          coords: 'User.profile(includeSuspended: ...)',
+          fromContextSubgraphNames: ['users'],
+          subgraphName: 'reports',
+        }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: returns one error that lists every subgraph that defines the argument as non-null', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile(includeSuspended: Boolean!): Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean! @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['public', 'users']),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXTUAL_ARGUMENT_NOT_CONTEXTUAL_IN_ALL_SUBGRAPHS: composes without a warning if another subgraph defines the field without the argument', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! profile: Profile @shareable }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @shareable
+              }
+              type Profile @shareable { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error if a contextual argument is non-null', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean! @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['users']),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error if a contextual argument with a type-conditioned selection is non-null', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean! @fromContext(field: "$userScope ... on ModerationQueue { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        requiredContextArgumentError('User.profile(includeSuspended: ...)', ['users'], ['users']),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error for each non-null contextual argument of the multiple contexts example of the Apollo documentation', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'docs',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@context", "@fromContext"])
+              type Query {
+                a: A!
+                b: B!
+                c: C!
+              }
+              type A @key(fields: "id") @context(name: "context1"){
+                id: ID!
+                field: String!
+                someField: String!
+                child: Child!
+              }
+              type B @key(fields: "id") @context(name: "context1"){
+                id: ID!
+                field: String!
+                someField: String!
+                child: Child!
+              }
+              type C @key(fields: "id") @context(name: "context1") {
+                id: ID!
+                field: String!
+                someOtherField: String!
+                child: Child!
+              }
+              type Child @key(fields: "id") {
+                id: ID!
+                prop1(
+                  arg: String!
+                      @fromContext(field: "$context1 ... on A { someField } ... on B { someField } ... on C { someOtherField }")
+                ): Int!
+                prop2(
+                  arg: String!
+                      @fromContext(field: "$context1 { field }")
+                ): Int!
+              }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        requiredContextArgumentError('Child.prop1(arg: ...)', ['docs'], ['docs']),
+        requiredContextArgumentError('Child.prop2(arg: ...)', ['docs'], ['docs']),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'docs' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'docs' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error for the non-null contextual argument of the disambiguation example of the Apollo documentation', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'docs',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@context", "@fromContext"])
+              type Query {
+                a: A!
+              }
+              type A @key(fields: "id") @context(name: "context1") {
+                id: ID!
+                field: String!
+                b: B!
+              }
+              type B @key(fields: "id") @context(name: "context1") {
+                id: ID!
+                field: String!
+                c: C!
+              }
+              type C @key(fields: "id") {
+                id: ID!
+                prop(
+                  arg: String! @fromContext(field: "$context1 { field }")
+                ): Int!
+              }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([requiredContextArgumentError('C.prop(arg: ...)', ['docs'], ['docs'])]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'docs' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'docs' }),
+      ]);
+    });
+  });
+
+  describe('authorization', () => {
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: returns an error if the selected field requires authentication', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@authenticated"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean! @authenticated
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        missingContextAuthorizationRequirementsError({
+          contextName: 'userScope',
+          dependencyCoords: 'ModerationQueue.includeSuspended',
+          fieldCoords: 'User.profile',
+          parentTypeName: 'User',
+        }),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: returns an error if the setter type requires authentication', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@authenticated"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") @authenticated {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        missingContextAuthorizationRequirementsError({
+          contextName: 'userScope',
+          dependencyCoords: 'ModerationQueue',
+          fieldCoords: 'User.profile',
+          parentTypeName: 'User',
+        }),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: returns an error if a type condition requires authentication', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@authenticated"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") @authenticated {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              union Scope @context(name: "userScope") = ModerationQueue
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope ... on ModerationQueue { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        missingContextAuthorizationRequirementsError({
+          contextName: 'userScope',
+          dependencyCoords: 'ModerationQueue',
+          fieldCoords: 'User.profile',
+          parentTypeName: 'User',
+        }),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: returns an error if the return type of the selected field requires authentication', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@authenticated"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                severity: Severity!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+              enum Severity @authenticated { LOW HIGH }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                severity: Severity! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(severity: Severity @fromContext(field: "$userScope { severity }")): Profile
+              }
+              type Profile { displayName: String! }
+              enum Severity { LOW HIGH }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        missingContextAuthorizationRequirementsError({
+          contextName: 'userScope',
+          dependencyCoords: 'ModerationQueue.severity',
+          fieldCoords: 'User.profile',
+          parentTypeName: 'User',
+        }),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: returns an error if one set of scopes of the field lacks a scope of the selected field', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@requiresScopes"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean! @requiresScopes(scopes: [["read:queue"]])
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@requiresScopes"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @requiresScopes(scopes: [["read:user"], ["read:queue"]])
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        missingContextAuthorizationRequirementsError({
+          contextName: 'userScope',
+          dependencyCoords: 'ModerationQueue.includeSuspended',
+          fieldCoords: 'User.profile',
+          parentTypeName: 'User',
+        }),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: returns one error if two contextual arguments of the field read the same field', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@authenticated"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean! @authenticated
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(
+                  includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")
+                  hideSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")
+                ): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        missingContextAuthorizationRequirementsError({
+          contextName: 'userScope',
+          dependencyCoords: 'ModerationQueue.includeSuspended',
+          fieldCoords: 'User.profile',
+          parentTypeName: 'User',
+        }),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: composes if the field requires the authentication of the selected field', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@authenticated"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean! @authenticated
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@authenticated"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @authenticated
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: composes if the parent type of the field requires the authentication of the selected field', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@authenticated"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean! @authenticated
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@authenticated"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") @authenticated {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('MISSING_TRANSITIVE_AUTH_REQUIREMENTS: composes if each set of scopes of the field includes the scopes of the selected field', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@requiresScopes"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean! @requiresScopes(scopes: [["read:queue"]])
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@requiresScopes"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile @requiresScopes(scopes: [["read:queue", "read:user"]])
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+  });
+
+  describe('@interfaceObject setters', () => {
+    test('returns an error if a setter type implements an Interface that another subgraph declares @interfaceObject', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@interfaceObject"])
+              type Query { queue(id: ID!): Queue }
+              type Queue @key(fields: "id") @interfaceObject {
+                id: ID!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              interface Queue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean!
+              }
+              type ModerationQueue implements Queue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        contextSetterImplementsInterfaceObjectError({
+          contextName: 'userScope',
+          interfaceObjectSubgraphNames: ['moderation'],
+          interfaceTypeName: 'Queue',
+          setterTypeName: 'ModerationQueue',
+          subgraphName: 'users',
+        }),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('composes if a type that sets an unreferenced context implements an Interface that another subgraph declares @interfaceObject', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@interfaceObject"])
+              type Query { queue(id: ID!): Queue }
+              type Queue @key(fields: "id") @interfaceObject {
+                id: ID!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              interface Queue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean!
+              }
+              type ModerationQueue implements Queue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile: Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' })]);
+    });
+  });
+
+  describe('selections across subgraphs', () => {
+    test('INVALID_FIELD_SHARING: returns an error if the selected field is defined without @external in the consuming subgraph', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean!
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidFieldShareabilityError(
+          {
+            name: 'ModerationQueue',
+            fieldDataByName: new Map<string, FieldData>([
+              [
+                'includeSuspended',
+                {
+                  isShareableBySubgraphName: new Map<string, boolean>([
+                    ['moderation', false],
+                    ['users', false],
+                  ]),
+                  subgraphNames: new Set<string>(['moderation', 'users']),
+                } as FieldData,
+              ],
+            ]),
+          } as ObjectDefinitionData,
+          new Set<string>(['includeSuspended']),
+        ),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('INVALID_FIELD_SHARING: returns an error if the setter type defines no @key in the consuming subgraph', () => {
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidFieldShareabilityError(
+          {
+            name: 'ModerationQueue',
+            fieldDataByName: new Map<string, FieldData>([
+              [
+                'id',
+                {
+                  isShareableBySubgraphName: new Map<string, boolean>([
+                    ['moderation', true],
+                    ['users', false],
+                  ]),
+                  subgraphNames: new Set<string>(['moderation', 'users']),
+                } as FieldData,
+              ],
+            ]),
+          } as ObjectDefinitionData,
+          new Set<string>(['id']),
+        ),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('SATISFIABILITY_ERROR: returns an error if the selected field cannot be resolved for the setter type', () => {
+      const entityAncestorData: EntityAncestorData = {
+        fieldSetsByTargetSubgraphName: new Map<string, Set<string>>(),
+        subgraphName: 'moderation',
+        typeName: 'ModerationQueue',
+      };
+      const rootFieldData = newRootFieldData(QUERY, 'moderationQueue', new Set<string>(['moderation']));
+      const unresolvableFieldData: UnresolvableFieldData = {
+        externalSubgraphNames: new Set<string>(),
+        fieldName: 'policyLevel',
+        selectionSet: renderSelectionSet(generateSelectionSetSegments('query.moderationQueue'), {
+          isLeaf: true,
+          name: 'policyLevel',
+        } as GraphFieldData),
+        subgraphNames: new Set<string>(['users']),
+        typeName: 'ModerationQueue',
+      };
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id", resolvable: false) @context(name: "userScope") {
+                id: ID!
+                policyLevel: Int
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(level: Int @fromContext(field: "$userScope { policyLevel }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        unresolvablePathError(
+          unresolvableFieldData,
+          generateResolvabilityErrorReasons({ entityAncestorData, rootFieldData, unresolvableFieldData }),
+        ),
+      ]);
       expect(warnings).toStrictEqual([
         unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
         unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),

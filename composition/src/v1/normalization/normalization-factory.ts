@@ -4870,6 +4870,7 @@ export class NormalizationFactory {
        * to an engine configuration in the router
        */
       configurationDataByTypeName: this.configurationDataByTypeName,
+      contextualArgumentDatas: this.contextualArgumentDatas,
       costs: this.costs,
       directiveDefinitionByName: this.directiveDefinitionByName,
       entityDataByTypeName: this.entityDataByTypeName,

@@ -21,3 +21,109 @@ To solve this issue you should proceed as follows:
 - after you have published the change to all subgraphs that define that enum, remove _@inaccessible_ from the origin subgraph and publish the change
 
 This migration approach, while cumbersome, ensures that the federated contract is respected at all times, keeping your router safe from any run-time errors.
+
+## @context and @fromContext
+
+Composition rejects every invalid use of `@context` and `@fromContext`.
+A subgraph error names the directive instance and lists every reason, for example:
+
+```text
+The subgraph "users" could not be federated for the following reason:
+The 1st instance of the directive "@fromContext" declared on coordinates "User.profile(includeSuspended: ...)" is invalid for the following reason:
+The context "userScope" is not set by any type in this subgraph. "@fromContext" can only reference a context that is set with "@context" in the same subgraph.
+```
+
+The sections below quote the start of each reason and describe the fix.
+
+### Context names
+
+`The argument "name" is defined with the value "..."`
+
+A context name starts with a letter and contains only letters and digits.
+Rename the context in `@context` and in every `@fromContext` that references it.
+
+### Contexts on mutation and subscription root types
+
+`The mutation root type "Mutation" cannot set a context that "@fromContext" reads`
+
+Reading such a context would execute an additional mutation or subscription root field.
+Set the context on another type.
+A context on these root types that no `@fromContext` references composes.
+
+### Placement of @fromContext
+
+`@fromContext` is rejected on:
+
+- arguments of directive definitions: `"@fromContext" cannot be defined on an argument of a directive definition.`
+- arguments of Interface fields and of the fields that implement them: `"@fromContext" cannot be defined on an argument of the Interface field "..."`, or an Interface implementation error that lists the arguments that define `"@fromContext"`.
+- arguments of fields of `@interfaceObject` types: `"@fromContext" cannot be defined on an argument of a field of the type "...", which is declared "@interfaceObject".`
+
+Define the contextual argument on a field of an object type that does not implement an Interface field of the same name.
+
+### Default values
+
+`An argument that defines "@fromContext" cannot define a default value.`
+
+Remove the default value. A default value of `null` is also a default value.
+
+### Context references
+
+- `The argument "field" is defined with the value "..."` or `The argument "field" is not defined`: set `field` to `$`, a context name and a selection, for example `"$userScope { includeSuspended }"`.
+- `The context "..." is not set by any type in this subgraph.`: set the context with `@context` on a type of the same subgraph. A `@fromContext` cannot reference a context of another subgraph.
+
+### Context selections
+
+A type that declares the context with `@context` is a setter type.
+These reasons reject a selection:
+
+| Reason | Fix |
+| --- | --- |
+| `The selection "..." selects more than one field.` | Select a single field, or use inline fragments with type conditions. |
+| `The selection "..." combines fields and inline fragments at the top level.` | Use either a single field or only inline fragments. |
+| `The selection "..." defines more than one top-level inline fragment with the type condition "..."` or `defines a top-level inline fragment without a type condition.` | Give each top-level inline fragment a distinct type condition. |
+| `The selection "..." contains a fragment spread.` | Replace the fragment spread with an inline fragment. |
+| `The selection "..." could not be parsed.` | Fix the syntax of the selection. |
+| `The selection "..." is invalid for the type "...", which sets the context "..."` | Select fields that exist on every setter type, with valid arguments and sub-selections. |
+| `The selection "..." uses the variable "..."` | Replace the variable with a literal. |
+| `The selection "..." defines the directive "..."` | Remove the directive. `@skip` and `@include` are not allowed either. |
+| `The selection "..." defines the alias "..."` | Remove the alias. |
+| `The selection "..." visits the type "...", which is declared "@interfaceObject".` | Do not set or read a context on `@interfaceObject` types. |
+| `For the type "...", the selection "..." resolves to "...", which differs from the argument type "..."` | Use the type of the selected field as the argument type, with every non-null wrapper removed. |
+| `The selection "..." resolves to several fields for the type "..."` | Select exactly one leaf field for each setter type. |
+| `The type condition "..." of the selection "..." does not exist in this subgraph.` or `Only Object types can be used as type conditions in a context selection.` | Use object types of the subgraph as type conditions. |
+| `None of the type conditions of the selection "..." applies to the type "..."` | Add a type condition for that setter type. |
+| `The type condition "..." of the selection "..." does not apply to any type that sets the context "..."` | Remove the type condition. |
+| `The inline fragment on "..." in the selection "..." does not resolve to a single value.` | Select a single field in the inline fragment, without nested inline fragments. |
+
+### Keys of the type with the contextual argument
+
+- `The type "..." defines a field with an argument that defines "@fromContext", so it must define at least one "@key" that is resolvable in this subgraph.`
+- `The type "..." defines a field with an argument that defines "@fromContext", so at least one of its "@key" directives must select only fields that this subgraph resolves.`
+
+Add a `@key` to the type whose fields are not `@external` and whose `resolvable` argument is `true` or omitted.
+
+### Non-null contextual arguments
+
+`The argument "..." is invalid because: It defines "@fromContext" in the following subgraph: "..." However, this argument is required in the following subgraph: "..."`
+
+This error has two causes:
+
+- The argument that defines `@fromContext` is non-null. Make it nullable.
+- Another subgraph defines the same argument without `@fromContext`, as non-null and without a default value. Make that definition nullable, or give it a default value. Definitions on `@external` fields are ignored.
+
+When the other definition is nullable or has a default value, composition succeeds with a warning.
+The router populates the argument, so the subgraph without `@fromContext` never receives a value for it.
+
+### Authorization of context data
+
+`The field "..." reads "..." through the context "..."`
+
+A context selection reads a setter type, a type condition, a field or the return type of a field that declares `@authenticated` or `@requiresScopes`.
+Declare at least the same requirements on the field with the contextual argument or on its parent type.
+
+### Setter types that implement an @interfaceObject Interface
+
+`The type "..." sets the context "..." in the subgraph "..." and implements the Interface "...", which the subgraph "..." declares "@interfaceObject".`
+
+A setter type of a context that a `@fromContext` references cannot implement an Interface that any subgraph declares `@interfaceObject`.
+Set the context on a type that does not implement such an Interface.

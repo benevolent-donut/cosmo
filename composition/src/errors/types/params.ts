@@ -197,3 +197,18 @@ export type ContextualArgumentWithoutLocalKeyErrorParams = {
   externalFieldCoords: Array<string>;
   typeName: TypeName;
 };
+
+export type ContextSetterImplementsInterfaceObjectErrorParams = {
+  contextName: string;
+  interfaceObjectSubgraphNames: Array<SubgraphName>;
+  interfaceTypeName: TypeName;
+  setterTypeName: TypeName;
+  subgraphName: SubgraphName;
+};
+
+export type MissingContextAuthorizationRequirementsErrorParams = {
+  contextName: string;
+  dependencyCoords: string;
+  fieldCoords: string;
+  parentTypeName: TypeName;
+};

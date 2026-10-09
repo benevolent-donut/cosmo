@@ -26,11 +26,13 @@ import {
   type AliasInContextSelectionErrorParams,
   type ContextSelectionSetterErrorParams,
   type ContextSelectionTypeConditionErrorParams,
+  type ContextSetterImplementsInterfaceObjectErrorParams,
   type ContextualArgumentWithoutLocalKeyErrorParams,
   type DirectiveInContextSelectionErrorParams,
   type IncompatibleContextSelectionTypeErrorParams,
   type InvalidArgumentValueInFieldSetErrorParams,
   type InvalidContextSelectionForSetterErrorParams,
+  type MissingContextAuthorizationRequirementsErrorParams,
   type MultipleContextSelectionLeavesErrorParams,
   type NonObjectContextTypeConditionErrorParams,
   type RootOperationTypeContextErrorParams,
@@ -43,6 +45,7 @@ import { type UnresolvableFieldData } from '../resolvability-graph/utils/utils';
 import {
   AND_UPPER,
   ARGUMENT,
+  AUTHENTICATED,
   CONTEXT,
   EXTERNAL,
   FIELD,
@@ -61,6 +64,7 @@ import {
   OBJECT,
   OR_UPPER,
   QUOTATION_JOIN,
+  REQUIRES_SCOPES,
   SUBSCRIPTION_FIELD_CONDITION,
   SUBSCRIPTION_FILTER,
   SUBSCRIPTION_FILTER_CONDITION,
@@ -2492,5 +2496,39 @@ export function rootOperationTypeContextErrorMessage({
   return (
     `The ${operationType} root type "${typeName}" cannot set a context that "@${FROM_CONTEXT}" reads, because` +
     ` resolving the context would execute an additional ${operationType} root field.`
+  );
+}
+
+export function contextSetterImplementsInterfaceObjectError({
+  contextName,
+  interfaceObjectSubgraphNames,
+  interfaceTypeName,
+  setterTypeName,
+  subgraphName,
+}: ContextSetterImplementsInterfaceObjectErrorParams): Error {
+  const isPlural = interfaceObjectSubgraphNames.length > 1;
+  return new Error(
+    `The type "${setterTypeName}" sets the context "${contextName}" in the subgraph "${subgraphName}" and implements` +
+      ` the Interface "${interfaceTypeName}", which the subgraph` +
+      (isPlural ? 's' : '') +
+      ` "` +
+      interfaceObjectSubgraphNames.join(QUOTATION_JOIN) +
+      `" declare` +
+      (isPlural ? '' : 's') +
+      ` "@${INTERFACE_OBJECT}". A type that sets a context read by "@${FROM_CONTEXT}" cannot implement an Interface` +
+      ` that any subgraph declares "@${INTERFACE_OBJECT}".`,
+  );
+}
+
+export function missingContextAuthorizationRequirementsError({
+  contextName,
+  dependencyCoords,
+  fieldCoords,
+  parentTypeName,
+}: MissingContextAuthorizationRequirementsErrorParams): Error {
+  return new Error(
+    `The field "${fieldCoords}" reads "${dependencyCoords}" through the context "${contextName}".` +
+      ` "${dependencyCoords}" requires authorization, so "${fieldCoords}" or its parent type "${parentTypeName}"` +
+      ` must declare at least the same "@${AUTHENTICATED}" and "@${REQUIRES_SCOPES}" requirements.`,
   );
 }

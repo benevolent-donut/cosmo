@@ -20,6 +20,7 @@ import {
   type TypeName,
 } from '../types/types';
 import { type DirectiveDefinitionData } from '../directive-definition-data/types/types';
+import { type ContextualArgumentData } from '../v1/normalization/types/types';
 
 // Properties are sorted alphabetically, optionals are last.
 
@@ -42,6 +43,7 @@ export type SubgraphConfig = {
 export type InternalSubgraph = {
   conditionalFieldDataByCoords: Map<string, ConditionalFieldData>;
   configurationDataByTypeName: Map<TypeName, ConfigurationData>;
+  contextualArgumentDatas: Array<ContextualArgumentData>;
   definitions: DocumentNode;
   directiveDefinitionByName: Map<DirectiveName, DirectiveDefinitionNode>;
   entityInterfaceSubgraphDataByTypeName: Map<AbstractTypeName, EntityInterfaceSubgraphData>;

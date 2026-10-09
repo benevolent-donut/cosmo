@@ -27,7 +27,6 @@ import {
   allChildDefinitionsAreInaccessibleError,
   allExternalFieldInstancesError,
   configureDescriptionPropagationError,
-  requiredContextArgumentError,
   inaccessibleQueryRootTypeError,
   inaccessibleRequiredInputValueError,
   incompatibleFederatedFieldNamedTypeError,
@@ -170,6 +169,7 @@ import {
 } from '../../schema-building/utils';
 
 import { renameRootTypes } from './walkers';
+import { validateContextualArgumentInstances, validateFederatedContexts } from './contexts';
 import { cloneDeep } from 'lodash';
 import {
   DivergentType,
@@ -266,6 +266,7 @@ import { BatchNormalizer } from '../normalization/batch-normalization/batch-norm
 import { type DirectiveArgumentData, type DirectiveDefinitionData } from '../../directive-definition-data/types/types';
 
 export class FederationFactory {
+  argumentMergeErrorsByCoords = new Map<string, Array<Error>>();
   authorizationDataByParentTypeName: Map<TypeName, AuthorizationData>;
   coordsByNamedTypeName = new Map<TypeName, Set<string>>();
   directiveDefinitionByName = new Map<DirectiveName, DirectiveDefinitionNode>();
@@ -807,7 +808,8 @@ export class FederationFactory {
     if (mergeResult.success) {
       targetData.type = mergeResult.typeNode;
     } else {
-      this.errors.push(
+      this.pushInputValueMergeError(
+        existingData,
         incompatibleMergedTypesError({
           actualType: mergeResult.actualType,
           isArgument: existingData.isArgument,
@@ -818,8 +820,17 @@ export class FederationFactory {
     }
     const validationResult = compareAndValidateInputDefaultValues({ existingData, incomingData });
     if (!validationResult.success) {
-      this.errors.push(validationResult.error);
+      this.pushInputValueMergeError(existingData, validationResult.error);
     }
+  }
+
+  pushInputValueMergeError(data: InputValueData, error: Error) {
+    // Arguments that define @fromContext in any subgraph are removed, so their merge errors wait for all subgraphs.
+    if (data.isArgument) {
+      getValueOrDefault(this.argumentMergeErrorsByCoords, data.federatedCoords, () => []).push(error);
+      return;
+    }
+    this.errors.push(error);
   }
 
   handleInputValueInaccessibility(isParentInaccessible: boolean, inputValueData: InputValueData, parentCoords: string) {
@@ -1956,16 +1967,12 @@ export class FederationFactory {
     const fieldCoords = `${fieldData.renamedParentTypeName}.${fieldData.name}`;
     for (const [argumentName, inputValueData] of fieldData.argumentDataByName) {
       if (doesArgumentDefineFromContext(inputValueData)) {
-        if (inputValueData.requiredSubgraphNames.size > 0) {
-          this.errors.push(
-            requiredContextArgumentError(
-              inputValueData.federatedCoords,
-              [...inputValueData.fromContextSubgraphNames],
-              [...inputValueData.requiredSubgraphNames],
-            ),
-          );
-        }
+        validateContextualArgumentInstances(this, fieldData, inputValueData);
         continue;
+      }
+      const mergeErrors = this.argumentMergeErrorsByCoords.get(inputValueData.federatedCoords);
+      if (mergeErrors) {
+        this.errors.push(...mergeErrors);
       }
       if (fieldData.subgraphNames.size === inputValueData.subgraphNames.size) {
         argumentNames.push(argumentName);
@@ -2435,6 +2442,7 @@ export class FederationFactory {
     this.#addDirectiveDefinitionsAndDepsToRouterAndClientSchemas();
     // The named type auth data can only be pushed to the field once it has all been consolidated
     this.pushNamedTypeAuthDataToFields();
+    validateFederatedContexts(this);
   }
 
   validateInterfaceImplementationsAndPushToDocumentDefinitions(
