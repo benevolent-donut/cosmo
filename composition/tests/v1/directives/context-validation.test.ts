@@ -86,6 +86,7 @@ import {
   federateSubgraphsSuccess,
   normalizeString,
   normalizeSubgraphFailure,
+  normalizeSubgraphSuccess,
   schemaToSortedNormalizedString,
 } from '../../utils/utils';
 import { SCHEMA_QUERY_DEFINITION } from '../utils/utils';
@@ -2423,6 +2424,89 @@ describe('@context and @fromContext validation tests', () => {
           multipleContextSelectionLeavesErrorMessage({
             leafPaths: ['owner.id', 'owner.altId'],
             selection: '{ owner { id altId } }',
+            setterTypeName: 'ModerationQueue',
+          }),
+        ]),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('returns an error if the merged selections of a repeated field select several fields', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+              owner: Moderator! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              ownerNote(
+                ownerId: ID @fromContext(field: "$userScope ... on ModerationQueue { owner { id } owner { altId } }")
+              ): String
+            }
+            type Profile { displayName: String! }
+            type Moderator @shareable { id: ID! altId: ID! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.ownerNote(ownerId: ...)', FIRST_ORDINAL, [
+          multipleContextSelectionLeavesErrorMessage({
+            leafPaths: ['owner.id', 'owner.altId'],
+            selection: '... on ModerationQueue { owner { id } owner { altId } }',
+            setterTypeName: 'ModerationQueue',
+          }),
+        ]),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('returns an error if a selection selects a field twice with different arguments', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+              owner(active: Boolean): Moderator! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              ownerNote(
+                ownerId: ID
+                  @fromContext(
+                    field: "$userScope ... on ModerationQueue { owner(active: true) { id } owner(active: false) { id } }"
+                  )
+              ): String
+            }
+            type Profile { displayName: String! }
+            type Moderator @shareable { id: ID! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.ownerNote(ownerId: ...)', FIRST_ORDINAL, [
+          multipleContextSelectionLeavesErrorMessage({
+            leafPaths: ['owner.id', 'owner.id'],
+            selection: '... on ModerationQueue { owner(active: true) { id } owner(active: false) { id } }',
             setterTypeName: 'ModerationQueue',
           }),
         ]),
@@ -6521,6 +6605,70 @@ describe('@context and @fromContext validation tests', () => {
       ]);
     });
 
+    test('composes if the selection selects the same field more than once', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@shareable"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+                owner(active: Boolean): Moderator!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+              type Moderator @shareable { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+                owner(active: Boolean): Moderator! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(
+                  includeSuspended: Boolean
+                    @fromContext(field: "$userScope ... on ModerationQueue { includeSuspended includeSuspended }")
+                ): Profile
+                ownerNote(ownerId: ID @fromContext(field: "$userScope { owner { id id } }")): String
+                activeOwnerNote(
+                  ownerId: ID
+                    @fromContext(
+                      field: "$userScope ... on ModerationQueue { owner(active: true) { id } owner(active: true) { id } }"
+                    )
+                ): String
+              }
+              type Profile { displayName: String! }
+              type Moderator @shareable { id: ID! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
     test('composes if setter types of the same context are nested', () => {
       const { warnings } = federateSubgraphsSuccess(
         [
@@ -7093,6 +7241,60 @@ describe('@context and @fromContext validation tests', () => {
                 kind: Kind.INLINE_FRAGMENT,
               },
             ],
+          ]),
+        },
+      ]);
+    });
+
+    test('records the merged selection if the selection selects the same field more than once', () => {
+      const { contextualArgumentDatas } = normalizeSubgraphSuccess(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+              owner: Moderator! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(
+                includeSuspended: Boolean
+                  @fromContext(field: "$userScope ... on ModerationQueue { includeSuspended includeSuspended }")
+              ): Profile
+              ownerNote(ownerId: ID @fromContext(field: "$userScope { owner { id id } }")): String
+            }
+            type Profile { displayName: String! }
+            type Moderator @shareable { id: ID! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(contextualArgumentDatas).toStrictEqual([
+        {
+          argumentName: 'includeSuspended',
+          contextName: 'userScope',
+          fieldName: 'profile',
+          parentTypeName: 'User',
+          selectionDataBySetterTypeName: new Map<TypeName, ContextSelectionData>([
+            [
+              'ModerationQueue',
+              {
+                fieldSetByTypeConditionName: new Map<TypeName, string>([['ModerationQueue', 'includeSuspended']]),
+                kind: Kind.INLINE_FRAGMENT,
+              },
+            ],
+          ]),
+        },
+        {
+          argumentName: 'ownerId',
+          contextName: 'userScope',
+          fieldName: 'ownerNote',
+          parentTypeName: 'User',
+          selectionDataBySetterTypeName: new Map<TypeName, ContextSelectionData>([
+            ['ModerationQueue', { fieldSet: 'owner { id }', kind: Kind.FIELD }],
           ]),
         },
       ]);

@@ -10,6 +10,7 @@ import {
   type OperationDefinitionNode,
   OperationTypeNode,
   print,
+  type SelectionNode,
   type SelectionSetNode,
   specifiedDirectives,
   type TypeNode,
@@ -606,9 +607,10 @@ function validateContextSelection({
       }
     }
     if (!isFragmentSelection) {
+      const mergedSelectionSet = getMergedSelectionSet(operation.selectionSet);
       const selectionType = resolveContextSelectionType(
         { errorMessages, fieldSet, interfaceObjectTypeNames, nf, typeName: setterTypeName },
-        operation.selectionSet,
+        mergedSelectionSet,
         setterData,
         [],
       );
@@ -627,7 +629,7 @@ function validateContextSelection({
         return;
       }
       selectionDataBySetterTypeName.set(setterTypeName, {
-        fieldSet: getNormalizedFieldSet({ definitions: [operation], kind: Kind.DOCUMENT }),
+        fieldSet: getNormalizedFieldSet(getSelectionSetDocumentNode(mergedSelectionSet)),
         kind: Kind.FIELD,
       });
       continue;
@@ -673,6 +675,7 @@ function validateContextSelection({
     const fieldSetByTypeConditionName = new Map<TypeName, string>();
     for (const fragment of applicableFragments) {
       const typeConditionName = fragment.typeCondition!.name.value;
+      const mergedSelectionSet = getMergedSelectionSet(fragment.selectionSet);
       const selectionType = resolveContextSelectionType(
         {
           errorMessages,
@@ -682,7 +685,7 @@ function validateContextSelection({
           nf,
           typeName: typeConditionName,
         },
-        fragment.selectionSet,
+        mergedSelectionSet,
         getParentData(nf, typeConditionName),
         [],
       );
@@ -702,7 +705,7 @@ function validateContextSelection({
       }
       fieldSetByTypeConditionName.set(
         typeConditionName,
-        getNormalizedFieldSet(getSelectionSetDocumentNode(fragment.selectionSet)),
+        getNormalizedFieldSet(getSelectionSetDocumentNode(mergedSelectionSet)),
       );
     }
     selectionDataBySetterTypeName.set(setterTypeName, { fieldSetByTypeConditionName, kind: Kind.INLINE_FRAGMENT });
@@ -715,6 +718,51 @@ function validateContextSelection({
     }
   }
   return selectionDataBySetterTypeName;
+}
+
+// Fields with the same response name and arguments are one field, so their selections merge as in an operation.
+function getMergedSelectionSet(selectionSet: SelectionSetNode): SelectionSetNode {
+  const selections: Array<SelectionNode> = [];
+  const indexByFieldKey = new Map<string, number>();
+  for (const selection of selectionSet.selections) {
+    if (selection.kind !== Kind.FIELD) {
+      selections.push(selection);
+      continue;
+    }
+    const fieldKey = getFieldKey(selection);
+    const index = indexByFieldKey.get(fieldKey);
+    if (index === undefined) {
+      indexByFieldKey.set(fieldKey, selections.length);
+      selections.push(selection);
+      continue;
+    }
+    const existingSelection = selections[index] as FieldNode;
+    if (existingSelection.selectionSet && selection.selectionSet) {
+      selections[index] = {
+        ...existingSelection,
+        selectionSet: {
+          ...existingSelection.selectionSet,
+          selections: [...existingSelection.selectionSet.selections, ...selection.selectionSet.selections],
+        },
+      };
+    }
+  }
+  return {
+    ...selectionSet,
+    selections: selections.map((selection) =>
+      selection.kind === Kind.FIELD && selection.selectionSet
+        ? { ...selection, selectionSet: getMergedSelectionSet(selection.selectionSet) }
+        : selection,
+    ),
+  };
+}
+
+function getFieldKey({ alias, arguments: argumentNodes = [], name }: FieldNode): string {
+  return [
+    alias?.value ?? name.value,
+    name.value,
+    ...argumentNodes.map((argumentNode) => print(argumentNode)).sort(),
+  ].join(' ');
 }
 
 function getSelectionSetDocumentNode(selectionSet: SelectionSetNode): DocumentNode {
