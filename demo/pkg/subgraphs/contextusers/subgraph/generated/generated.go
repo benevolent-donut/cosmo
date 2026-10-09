@@ -69,6 +69,7 @@ type ComplexityRoot struct {
 		IncludeSuspended func(childComplexity int) int
 		PolicyLevel      func(childComplexity int) int
 		Summary          func(childComplexity int, includeSuspended *bool) int
+		Team             func(childComplexity int) int
 	}
 
 	Organization struct {
@@ -107,6 +108,7 @@ type ComplexityRoot struct {
 		QueueView  func(childComplexity int, includeSuspended *bool) int
 		ScopeView  func(childComplexity int, show *bool) int
 		Signature  func(childComplexity int, includeSuspended *bool) int
+		TeamView   func(childComplexity int, teamID *string) int
 		ViewerView func(childComplexity int, includeSuspended *bool) int
 	}
 
@@ -134,6 +136,7 @@ type UserResolver interface {
 	Profile(ctx context.Context, obj *model.User, includeSuspended *bool) (*model.Profile, error)
 	Badge(ctx context.Context, obj *model.User, level *int) (*string, error)
 	Peers(ctx context.Context, obj *model.User, ids []*string) (*string, error)
+	TeamView(ctx context.Context, obj *model.User, teamID *string) (*string, error)
 	QueueView(ctx context.Context, obj *model.User, includeSuspended *bool) (*string, error)
 	ScopeView(ctx context.Context, obj *model.User, show *bool) (*string, error)
 	ViewerView(ctx context.Context, obj *model.User, includeSuspended *bool) (*string, error)
@@ -285,6 +288,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModerationQueue.Summary(childComplexity, args["includeSuspended"].(*bool)), true
+
+	case "ModerationQueue.team":
+		if e.complexity.ModerationQueue.Team == nil {
+			break
+		}
+
+		return e.complexity.ModerationQueue.Team(childComplexity), true
 
 	case "Organization.id":
 		if e.complexity.Organization.ID == nil {
@@ -466,6 +476,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.User.Signature(childComplexity, args["includeSuspended"].(*bool)), true
 
+	case "User.teamView":
+		if e.complexity.User.TeamView == nil {
+			break
+		}
+
+		args, err := ec.field_User_teamView_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.User.TeamView(childComplexity, args["teamId"].(*string)), true
+
 	case "User.viewerView":
 		if e.complexity.User.ViewerView == nil {
 			break
@@ -584,11 +606,12 @@ type Query @context(name: "viewer") {
   viewerIncludeSuspended: Boolean
 }
 
-type ModerationQueue @key(fields: "id") @context(name: "userScope") @context(name: "policyScope") @context(name: "peerScope") {
+type ModerationQueue @key(fields: "id") @context(name: "userScope") @context(name: "policyScope") @context(name: "peerScope") @context(name: "teamScope") {
   id: ID!
   includeSuspended: Boolean! @external
   policyLevel: Int @external
   flaggedUsers: [User!]! @external
+  team: Team @external
   summary(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): String
 }
 
@@ -625,6 +648,7 @@ type User @key(fields: "id") {
   profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
   badge(level: Int @fromContext(field: "$policyScope { policyLevel }")): String
   peers(ids: [ID] @fromContext(field: "$peerScope { flaggedUsers { id } }")): String
+  teamView(teamId: ID @fromContext(field: "$teamScope { team { id } }")): String
   queueView(includeSuspended: Boolean @fromContext(field: "$queueScope { includeSuspended }")): String
   scopeView(show: Boolean @fromContext(field: "$scope ... on ModerationQueue { includeSuspended } ... on AppealQueue { showSuspended }")): String
   viewerView(includeSuspended: Boolean @fromContext(field: "$viewer { viewerIncludeSuspended }")): String
@@ -1212,6 +1236,34 @@ func (ec *executionContext) field_User_signature_argsIncludeSuspended(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_User_teamView_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_User_teamView_argsTeamID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["teamId"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_User_teamView_argsTeamID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["teamId"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("teamId"))
+	if tmp, ok := rawArgs["teamId"]; ok {
+		return ec.unmarshalOID2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_User_viewerView_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1553,6 +1605,8 @@ func (ec *executionContext) fieldContext_Entity_findModerationQueueByID(ctx cont
 				return ec.fieldContext_ModerationQueue_policyLevel(ctx, field)
 			case "flaggedUsers":
 				return ec.fieldContext_ModerationQueue_flaggedUsers(ctx, field)
+			case "team":
+				return ec.fieldContext_ModerationQueue_team(ctx, field)
 			case "summary":
 				return ec.fieldContext_ModerationQueue_summary(ctx, field)
 			}
@@ -1805,6 +1859,8 @@ func (ec *executionContext) fieldContext_Entity_findUserByID(ctx context.Context
 				return ec.fieldContext_User_badge(ctx, field)
 			case "peers":
 				return ec.fieldContext_User_peers(ctx, field)
+			case "teamView":
+				return ec.fieldContext_User_teamView(ctx, field)
 			case "queueView":
 				return ec.fieldContext_User_queueView(ctx, field)
 			case "scopeView":
@@ -2013,6 +2069,8 @@ func (ec *executionContext) fieldContext_ModerationQueue_flaggedUsers(_ context.
 				return ec.fieldContext_User_badge(ctx, field)
 			case "peers":
 				return ec.fieldContext_User_peers(ctx, field)
+			case "teamView":
+				return ec.fieldContext_User_teamView(ctx, field)
 			case "queueView":
 				return ec.fieldContext_User_queueView(ctx, field)
 			case "scopeView":
@@ -2025,6 +2083,51 @@ func (ec *executionContext) fieldContext_ModerationQueue_flaggedUsers(_ context.
 				return ec.fieldContext_User_signature(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModerationQueue_team(ctx context.Context, field graphql.CollectedField, obj *model.ModerationQueue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ModerationQueue_team(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Team, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Team)
+	fc.Result = res
+	return ec.marshalOTeam2ᚖgithubᚗcomᚋwundergraphᚋcosmoᚋdemoᚋpkgᚋsubgraphsᚋcontextusersᚋsubgraphᚋmodelᚐTeam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ModerationQueue_team(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModerationQueue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Team_id(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Team", field.Name)
 		},
 	}
 	return fc, nil
@@ -2792,6 +2895,8 @@ func (ec *executionContext) fieldContext_User_friends(_ context.Context, field g
 				return ec.fieldContext_User_badge(ctx, field)
 			case "peers":
 				return ec.fieldContext_User_peers(ctx, field)
+			case "teamView":
+				return ec.fieldContext_User_teamView(ctx, field)
 			case "queueView":
 				return ec.fieldContext_User_queueView(ctx, field)
 			case "scopeView":
@@ -2965,6 +3070,58 @@ func (ec *executionContext) fieldContext_User_peers(ctx context.Context, field g
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_User_peers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_teamView(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_teamView(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.User().TeamView(rctx, obj, fc.Args["teamId"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_teamView(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_User_teamView_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -5564,6 +5721,8 @@ func (ec *executionContext) _ModerationQueue(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "team":
+			out.Values[i] = ec._ModerationQueue_team(ctx, field, obj)
 		case "summary":
 			field := field
 
@@ -6025,6 +6184,39 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._User_peers(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "teamView":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_teamView(ctx, field, obj)
 				return res
 			}
 
@@ -7483,6 +7675,13 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	_ = ctx
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOTeam2ᚖgithubᚗcomᚋwundergraphᚋcosmoᚋdemoᚋpkgᚋsubgraphsᚋcontextusersᚋsubgraphᚋmodelᚐTeam(ctx context.Context, sel ast.SelectionSet, v *model.Team) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Team(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO_Entity2githubᚗcomᚋ99designsᚋgqlgenᚋpluginᚋfederationᚋfedruntimeᚐEntity(ctx context.Context, sel ast.SelectionSet, v fedruntime.Entity) graphql.Marshaler {

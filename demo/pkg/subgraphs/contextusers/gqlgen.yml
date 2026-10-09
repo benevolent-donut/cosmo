@@ -71,6 +71,8 @@ models:
         resolver: true
       peers:
         resolver: true
+      teamView:
+        resolver: true
       queueView:
         resolver: true
       scopeView:

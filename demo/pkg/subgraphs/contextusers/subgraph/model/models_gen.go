@@ -26,6 +26,7 @@ type ModerationQueue struct {
 	IncludeSuspended bool    `json:"includeSuspended"`
 	PolicyLevel      *int    `json:"policyLevel,omitempty"`
 	FlaggedUsers     []*User `json:"flaggedUsers"`
+	Team             *Team   `json:"team,omitempty"`
 	Summary          *string `json:"summary,omitempty"`
 }
 
@@ -70,6 +71,7 @@ type User struct {
 	Profile    *Profile `json:"profile,omitempty"`
 	Badge      *string  `json:"badge,omitempty"`
 	Peers      *string  `json:"peers,omitempty"`
+	TeamView   *string  `json:"teamView,omitempty"`
 	QueueView  *string  `json:"queueView,omitempty"`
 	ScopeView  *string  `json:"scopeView,omitempty"`
 	ViewerView *string  `json:"viewerView,omitempty"`

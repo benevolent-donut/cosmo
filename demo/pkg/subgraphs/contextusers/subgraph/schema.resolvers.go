@@ -47,6 +47,11 @@ func (r *userResolver) Peers(ctx context.Context, obj *model.User, ids []*string
 	return echo(obj.ID, listArgument("ids", ids)), nil
 }
 
+// TeamView is the resolver for the teamView field.
+func (r *userResolver) TeamView(ctx context.Context, obj *model.User, teamID *string) (*string, error) {
+	return echo(obj.ID, argument("teamId", teamID)), nil
+}
+
 // QueueView is the resolver for the queueView field.
 func (r *userResolver) QueueView(ctx context.Context, obj *model.User, includeSuspended *bool) (*string, error) {
 	return echo(obj.ID, argument("includeSuspended", includeSuspended)), nil

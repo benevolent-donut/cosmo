@@ -8,11 +8,12 @@ type Query @context(name: "viewer") {
   viewerIncludeSuspended: Boolean
 }
 
-type ModerationQueue @key(fields: "id") @context(name: "userScope") @context(name: "policyScope") @context(name: "peerScope") {
+type ModerationQueue @key(fields: "id") @context(name: "userScope") @context(name: "policyScope") @context(name: "peerScope") @context(name: "teamScope") {
   id: ID!
   includeSuspended: Boolean! @external
   policyLevel: Int @external
   flaggedUsers: [User!]! @external
+  team: Team @external
   summary(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): String
 }
 
@@ -44,6 +45,7 @@ type User @key(fields: "id") {
   profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
   badge(level: Int @fromContext(field: "$policyScope { policyLevel }")): String
   peers(ids: [ID] @fromContext(field: "$peerScope { flaggedUsers { id } }")): String
+  teamView(teamId: ID @fromContext(field: "$teamScope { team { id } }")): String
   queueView(includeSuspended: Boolean @fromContext(field: "$queueScope { includeSuspended }")): String
   scopeView(show: Boolean @fromContext(field: "$scope ... on ModerationQueue { includeSuspended } ... on AppealQueue { showSuspended }")): String
   viewerView(includeSuspended: Boolean @fromContext(field: "$viewer { viewerIncludeSuspended }")): String

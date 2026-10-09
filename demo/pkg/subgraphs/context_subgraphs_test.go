@@ -173,13 +173,14 @@ func TestContextUsersHandler(t *testing.T) {
 	server := httptest.NewServer(ContextUsersHandler())
 	t.Cleanup(server.Close)
 
-	contextualQuery := `query($representations: [_Any!]!, $includeSuspended: Boolean, $level: Int, $ids: [ID], $show: Boolean) {
+	contextualQuery := `query($representations: [_Any!]!, $includeSuspended: Boolean, $level: Int, $ids: [ID], $teamId: ID, $show: Boolean) {
 		_entities(representations: $representations) {
 			... on User {
 				id
 				profile(includeSuspended: $includeSuspended) { displayName includeSuspended }
 				badge(level: $level)
 				peers(ids: $ids)
+				teamView(teamId: $teamId)
 				queueView(includeSuspended: $includeSuspended)
 				scopeView(show: $show)
 				viewerView(includeSuspended: $includeSuspended)
@@ -207,6 +208,7 @@ func TestContextUsersHandler(t *testing.T) {
 				"includeSuspended": true,
 				"level":            3,
 				"ids":              []any{"u1", "u2"},
+				"teamId":           "t1",
 				"show":             false,
 			},
 			want: `{"data":{"_entities":[
@@ -215,6 +217,7 @@ func TestContextUsersHandler(t *testing.T) {
 					"profile":{"displayName":"u1","includeSuspended":true},
 					"badge":"u1|level=3",
 					"peers":"u1|ids=[u1,u2]",
+					"teamView":"u1|teamId=t1",
 					"queueView":"u1|includeSuspended=true",
 					"scopeView":"u1|show=false",
 					"viewerView":"u1|includeSuspended=true",
@@ -235,6 +238,7 @@ func TestContextUsersHandler(t *testing.T) {
 				"includeSuspended": nil,
 				"level":            nil,
 				"ids":              nil,
+				"teamId":           nil,
 				"show":             nil,
 			},
 			want: `{"data":{"_entities":[
@@ -243,6 +247,7 @@ func TestContextUsersHandler(t *testing.T) {
 					"profile":{"displayName":"u2","includeSuspended":null},
 					"badge":"u2|level=null",
 					"peers":"u2|ids=null",
+					"teamView":"u2|teamId=null",
 					"queueView":"u2|includeSuspended=null",
 					"scopeView":"u2|show=null",
 					"viewerView":"u2|includeSuspended=null",
