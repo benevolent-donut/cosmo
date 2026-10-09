@@ -44,7 +44,7 @@ An argument declared with `@fromContext` is a contextual argument.
   This includes object types that other subgraphs define.
 - A type does not provide context values to its own fields.
   An argument of a field on a setter type reads the context from an ancestor of the object.
-- A context that no `@fromContext` argument references has no effect.
+- The router ignores a context that no `@fromContext` argument references.
 
 Cosmo provides the directive in every subgraph, so a [`@link`](/federation/directives/link#usage) import is optional.
 

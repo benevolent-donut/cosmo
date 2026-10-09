@@ -68,7 +68,7 @@ Routers ROUTER_MIN_VERSION and later keep the threshold `1` for the storage addr
 Routers from 0.167.0 to the release before ROUTER_MIN_VERSION refuse version 2 configs, because version 2 is above their threshold.
 Most routers before 0.167.0 and the AWS Lambda router serve the graph without the arguments, see [Router versions](/federation/directives/fromcontext#router-versions).
 The router checks the version of the base config only.
-A feature flag with contextual arguments raises the base config to version 2, except with split-config loading, see [Feature flags with split-config loading](/federation/directives/fromcontext#feature-flags-with-split-config-loading).
+A feature flag with contextual arguments raises the base config to version 2, except with split-config loading from the control plane, see [Feature flags with split-config loading](/federation/directives/fromcontext#feature-flags-with-split-config-loading).
 
 ## Which router compatibility versions are currently supported?
 

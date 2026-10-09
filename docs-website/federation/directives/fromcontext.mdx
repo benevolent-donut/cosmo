@@ -352,7 +352,7 @@ Below q1, `peers` receives `["u1", "u2"]`.
 A contextual argument is `null` when:
 
 - no ancestor on the path sets the context;
-- the selected field of the nearest setter is `null`;
+- a field of the selection is `null` on the nearest setter, for example `team` in `{ team { id } }`;
 - no type condition of the selection applies to the type of the nearest setter.
 
 The subgraph receives `null` in each of these cases and cannot tell them apart.
@@ -457,8 +457,8 @@ In these rules, a setter type is a type of the subgraph that declares the contex
 - **Rate limiting**: The [subgraph rate limiter](/router/configuration#rate-limiting) counts a planned fetch once, whatever the number of requests it sends.
 - **Tracing**: For a fetch that sends several requests, the trace views of the [Studio playground](/studio/playground) show only the first request.
 
-`engine.max_contextual_argument_groups` limits the number of distinct values per fetch. The default is 100.
-For a fetch above the limit, the router sends no request and returns an error that names the subgraph, the number of distinct values and the limit.
+`engine.max_contextual_argument_groups` limits the number of requests that one fetch sends for distinct values. The default is 100 and the minimum is 1.
+For a fetch that needs more requests, the router sends none and returns an error at the path of the fetch that names the subgraph, the number of requests and the limit.
 
 ```yaml config.yaml
 engine:
@@ -471,7 +471,7 @@ Environment variable: `ENGINE_MAX_CONTEXTUAL_ARGUMENT_GROUPS`.
 
 Composition stamps every execution config that contains contextual arguments with [router compatibility version](/concepts/router-compatibility-versions) 2.
 Configs without contextual arguments keep version 1.
-Composition warns about the minimum router version for every subgraph that uses the directives.
+Composition reports a warning that names the minimum router version for every subgraph that contributes contextual arguments to the config.
 
 | Router                                           | Behavior with a config that contains contextual arguments                                                                  |
 | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
@@ -483,7 +483,8 @@ Composition warns about the minimum router version for every subgraph that uses 
 
 A running router that polls for configs logs the rejection on every poll.
 From router 0.211.0, a [config reload](/router/configuration#config-watcher-hot-reloading) restarts the router, so a router that refuses the config exits on a reload.
-The `query-plan` command of routers before ROUTER_MIN_VERSION prints plans without contextual arguments.
+The [`query-plan`](/router/query-plan/batch-generate-query-plans) command of routers before ROUTER_MIN_VERSION prints plans without contextual arguments.
+From ROUTER_MIN_VERSION, the command refuses the execution configs that the router refuses.
 
 Upgrade in this order:
 
@@ -504,18 +505,18 @@ It serves graphs that use the directives and never sends contextual arguments to
 ### Feature flags with split-config loading
 
 The router checks the router compatibility version of the base config only.
-Without split-config loading, one execution config contains the base graph and all feature flags.
-Composition stamps it with version 2 when the base graph or any feature flag contains contextual arguments.
-Routers that refuse version 2 then refuse the whole config.
+These sources stamp the base config with version 2 when the base graph or any of its feature flags contains contextual arguments:
 
-With [split-config loading](/router/configuration#split-config-poller), the version of the base config reflects the base graph only.
+- the control plane without split-config loading, which puts the base graph and all feature flags into one execution config;
+- `wgc router compose`, also with `--split-configs-enabled`.
+
+Routers that refuse version 2 then refuse the graph with all of its feature flags.
+
+With [split-config loading](/router/configuration#split-config-poller) from the control plane, the version of the base config reflects the base graph only.
 When contextual arguments appear only in a feature subgraph, the base config keeps version 1.
 Routers from 0.315.0 to the release before ROUTER_MIN_VERSION then accept the graph and serve the traffic of that feature flag without contextual arguments.
 Composition still warns about the minimum router version for the feature subgraph.
-
 Upgrade every router to ROUTER_MIN_VERSION or later before you publish a feature subgraph with `@fromContext`.
-When the base graph contains contextual arguments, its base config carries version 2.
-Routers that refuse version 2 then refuse the graph with all of its feature flags.
 
 ## See also
 
