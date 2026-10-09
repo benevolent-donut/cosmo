@@ -93,6 +93,30 @@ message DataSourceConfiguration {
   CostConfiguration cost_configuration = 16;
   // Entity caching configuration (e.g. request-scoped fields from @openfed__requestScoped).
   EntityCachingConfiguration entity_caching_configuration = 17;
+  // Contextual arguments of the fields this data source resolves, declared with @fromContext; unset when there are none.
+  ContextualArgumentConfiguration contextual_argument_configuration = 18;
+}
+
+// ContextualArgumentConfiguration lists the @fromContext arguments of one subgraph.
+message ContextualArgumentConfiguration {
+  repeated ContextualArgument arguments = 1;
+}
+
+// ContextualArgument is an argument whose value the router reads from the nearest ancestor that sets its context.
+message ContextualArgument {
+  string type_name = 1;
+  string field_name = 2;
+  string argument_name = 3;
+  // The context name as declared with @context in the subgraph.
+  string context_name = 4;
+  repeated ContextSetter setters = 5;
+}
+
+// ContextSetter is a concrete object type that sets the context.
+message ContextSetter {
+  string type_name = 1;
+  // The field set on type_name with exactly one leaf; empty when the type sets the context to null.
+  string selection_set = 2;
 }
 
 // Entity caching configuration for a subgraph data source.
@@ -195,6 +219,7 @@ enum ArgumentRenderConfiguration {
 enum ArgumentSource {
   OBJECT_FIELD = 0;
   FIELD_ARGUMENT = 1;
+  FROM_CONTEXT = 2;
 }
 
 message TypeConfiguration {
