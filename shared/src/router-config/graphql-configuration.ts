@@ -5,6 +5,9 @@ import {
   ArgumentConfigurationSchema,
   ArgumentSource,
   AuthorizationConfigurationSchema,
+  ContextSetterSchema,
+  ContextualArgumentConfigurationSchema,
+  ContextualArgumentSchema,
   DataSourceCustomEventsSchema,
   EngineEventConfigurationSchema,
   EntityInterfaceConfigurationSchema,
@@ -26,6 +29,8 @@ import {
 import type {
   ArgumentConfiguration,
   AuthorizationConfiguration,
+  ContextualArgument,
+  ContextualArgumentConfiguration,
   DataSourceCustomEvents,
   EngineEventConfiguration,
   EntityInterfaceConfiguration,
@@ -64,6 +69,7 @@ export type DataSourceConfiguration = {
   requires: RequiredField[];
   entityInterfaces: EntityInterfaceConfiguration[];
   interfaceObjects: EntityInterfaceConfiguration[];
+  contextualArgumentConfiguration?: ContextualArgumentConfiguration;
 };
 
 function generateFieldSetConditions(requiredField: RequiredFieldConfiguration): Array<FieldSetCondition> | undefined {
@@ -146,6 +152,7 @@ export function configurationDatasToDataSourceConfiguration(
     entityInterfaces: [],
     interfaceObjects: [],
   };
+  const contextualArguments: Array<ContextualArgument> = [];
   for (const data of dataByTypeName.values()) {
     const typeName = data.typeName;
     const fieldNames: string[] = [...data.fieldNames];
@@ -173,6 +180,17 @@ export function configurationDatasToDataSourceConfiguration(
     addRequiredFields(data.keys, output.keys, typeName);
     addRequiredFields(data.provides, output.provides, typeName);
     addRequiredFields(data.requires, output.requires, typeName);
+    for (const { argumentName, contextName, fieldName, setters } of data.contextualArguments ?? []) {
+      contextualArguments.push(
+        create(ContextualArgumentSchema, {
+          argumentName,
+          contextName,
+          fieldName,
+          setters: setters.map((setter) => create(ContextSetterSchema, setter)),
+          typeName,
+        }),
+      );
+    }
     const natsEventConfigurations: NatsEventConfiguration[] = [];
     const kafkaEventConfigurations: KafkaEventConfiguration[] = [];
     const redisEventConfigurations: RedisEventConfiguration[] = [];
@@ -238,6 +256,11 @@ export function configurationDatasToDataSourceConfiguration(
     output.events.kafka.push(...kafkaEventConfigurations);
     output.events.redis.push(...redisEventConfigurations);
   }
+  if (contextualArguments.length > 0) {
+    output.contextualArgumentConfiguration = create(ContextualArgumentConfigurationSchema, {
+      arguments: contextualArguments,
+    });
+  }
   return output;
 }
 
@@ -253,6 +276,14 @@ export function generateFieldConfigurations(
           sourceType: ArgumentSource.FIELD_ARGUMENT,
         }),
     );
+    for (const argumentName of compositionFieldConfiguration.contextualArgumentNames ?? []) {
+      argumentConfigurations.push(
+        create(ArgumentConfigurationSchema, {
+          name: argumentName,
+          sourceType: ArgumentSource.FROM_CONTEXT,
+        }),
+      );
+    }
     const fieldConfiguration = create(FieldConfigurationSchema, {
       argumentsConfiguration: argumentConfigurations,
       fieldName: compositionFieldConfiguration.fieldName,

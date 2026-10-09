@@ -58,6 +58,7 @@ import type {
 
 import { invalidRouterCompatibilityVersion, normalizationFailureError } from './errors.js';
 import { configurationDatasToDataSourceConfiguration, generateFieldConfigurations } from './graphql-configuration.js';
+import { foldRouterCompatibilityVersion, getRequiredRouterCompatibilityVersion } from './compatibility.js';
 
 function costsToCostConfiguration(costs?: Costs): CostConfiguration | undefined {
   if (!costs) {
@@ -296,8 +297,17 @@ export const buildRouterConfig = function (input: Input): RouterConfig {
       engineConfig,
       printSchemaWithDirectives(lexicographicSortSchema(subgraph.schema)),
     );
-    const { childNodes, entityInterfaces, events, interfaceObjects, keys, provides, requires, rootNodes } =
-      configurationDatasToDataSourceConfiguration(subgraph.configurationDataByTypeName);
+    const {
+      childNodes,
+      contextualArgumentConfiguration,
+      entityInterfaces,
+      events,
+      interfaceObjects,
+      keys,
+      provides,
+      requires,
+      rootNodes,
+    } = configurationDatasToDataSourceConfiguration(subgraph.configurationDataByTypeName);
 
     let grcpConfig: GRPCConfiguration | undefined;
 
@@ -398,6 +408,7 @@ export const buildRouterConfig = function (input: Input): RouterConfig {
       // https://github.com/wundergraph/cosmo/blob/main/router/core/router.go#L342
       id: subgraph.id,
       childNodes,
+      contextualArgumentConfiguration,
       costConfiguration: costsToCostConfiguration(subgraph.costs),
       customEvents,
       customGraphql,
@@ -428,6 +439,8 @@ export const buildRouterConfig = function (input: Input): RouterConfig {
       name: s.name,
       routingUrl: s.url,
     })),
-    compatibilityVersion: `${input.routerCompatibilityVersion}:${COMPOSITION_VERSION}`,
+    compatibilityVersion: foldRouterCompatibilityVersion(`${input.routerCompatibilityVersion}:${COMPOSITION_VERSION}`, [
+      getRequiredRouterCompatibilityVersion(engineConfig),
+    ]),
   });
 };
