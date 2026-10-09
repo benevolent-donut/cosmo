@@ -737,19 +737,54 @@ func TestContextualArguments(t *testing.T) {
 		t.Run("deferred consumer of a sibling fragment is delivered in its defer scope", func(t *testing.T) {
 			t.Parallel()
 
-			runWithContextSubgraphs(t, testenv.ConfigWithContextsJSONTemplate, deferConfig(), func(t *testing.T, xEnv *testenv.Environment, s *contextSubgraphs) {
-				payloads := contextDeferPayloads(t, xEnv, `{ queues {
-					flaggedUsers { id }
-					... on ModerationQueue { flaggedUsers { queueView } }
-					... on AppealQueue { flaggedUsers { ... @defer { queueView } } }
-				} }`)
-				require.Len(t, payloads, 2)
-				require.JSONEq(t, `{"data":{"queues":[
-					{"flaggedUsers":[{"id":"u1","queueView":"u1|includeSuspended=true"},{"id":"u2","queueView":"u2|includeSuspended=true"}]},
-					{"flaggedUsers":[{"id":"u5"}]}
-				]},"pending":[{"id":"1","path":["queues"]}],"hasNext":true}`, payloads[0])
-				require.JSONEq(t, `{"incremental":[{"data":{"queueView":"u5|includeSuspended=false"},"id":"1","subPath":[1,"flaggedUsers",0]}],"completed":[{"id":"1"}],"hasNext":false}`, payloads[1])
-			})
+			for _, tc := range []struct {
+				name     string
+				query    string
+				payloads []string
+			}{
+				{
+					name: "scalar consumer",
+					query: `{ queues {
+						flaggedUsers { id }
+						... on ModerationQueue { flaggedUsers { queueView } }
+						... on AppealQueue { flaggedUsers { ... @defer { queueView } } }
+					} }`,
+					payloads: []string{
+						`{"data":{"queues":[
+							{"flaggedUsers":[{"id":"u1","queueView":"u1|includeSuspended=true"},{"id":"u2","queueView":"u2|includeSuspended=true"}]},
+							{"flaggedUsers":[{"id":"u5"}]}
+						]},"pending":[{"id":"1","path":["queues"]}],"hasNext":true}`,
+						`{"incremental":[{"data":{"queueView":"u5|includeSuspended=false"},"id":"1","subPath":[1,"flaggedUsers",0]}],"completed":[{"id":"1"}],"hasNext":false}`,
+					},
+				},
+				{
+					name: "object consumer",
+					query: `{ queues {
+						flaggedUsers { id }
+						... on ModerationQueue { flaggedUsers { profile { includeSuspended } } }
+						... on AppealQueue { flaggedUsers { ... @defer { profile { includeSuspended } } } }
+					} }`,
+					payloads: []string{
+						`{"data":{"queues":[
+							{"flaggedUsers":[{"id":"u1","profile":{"includeSuspended":true}},{"id":"u2","profile":{"includeSuspended":true}}]},
+							{"flaggedUsers":[{"id":"u5"}]}
+						]},"pending":[{"id":"1","path":["queues"]}],"hasNext":true}`,
+						`{"incremental":[{"data":{"profile":{"includeSuspended":null}},"id":"1","subPath":[1,"flaggedUsers",0]}],"completed":[{"id":"1"}],"hasNext":false}`,
+					},
+				},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+
+					runWithContextSubgraphs(t, testenv.ConfigWithContextsJSONTemplate, deferConfig(), func(t *testing.T, xEnv *testenv.Environment, s *contextSubgraphs) {
+						payloads := contextDeferPayloads(t, xEnv, tc.query)
+						require.Len(t, payloads, len(tc.payloads))
+						for i := range tc.payloads {
+							require.JSONEq(t, tc.payloads[i], payloads[i])
+						}
+					})
+				})
+			}
 		})
 
 		t.Run("client defer on the setter field does not delay the context selection", func(t *testing.T) {
