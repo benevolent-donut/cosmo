@@ -8,6 +8,9 @@ import {
   type ComposedSubgraph,
   type ComposedSubgraphGRPC,
   type ComposedSubgraphPlugin,
+  foldRouterCompatibilityVersion,
+  getRequiredRouterCompatibilityVersion,
+  getUnsupportedContextualArgumentSubgraphErrors,
   normalizeURL,
   type RouterSubgraph,
   SubgraphKind,
@@ -26,7 +29,7 @@ import {
   RouterConfigSchema,
 } from '@wundergraph/cosmo-connect/dist/node/v1/node_pb';
 
-import type { FeatureFlagRouterExecutionConfigs } from '@wundergraph/cosmo-connect/dist/node/v1/node_pb';
+import type { FeatureFlagRouterExecutionConfigs, RouterConfig } from '@wundergraph/cosmo-connect/dist/node/v1/node_pb';
 
 import {
   type ContractTagOptions,
@@ -58,6 +61,24 @@ import {
 } from './types/types.js';
 
 const STATIC_SCHEMA_VERSION_ID = '00000000-0000-0000-0000-000000000000';
+
+type FeatureFlagsConfig = {
+  compatibilityVersionByFeatureFlagName: Map<string, string>;
+  featureFlagConfigs: FeatureFlagRouterExecutionConfigs;
+};
+
+// Routers check only the compatibility version of the base config, so it covers the feature flag configs too.
+function foldFeatureFlagRouterCompatibilityVersions(
+  routerConfig: RouterConfig,
+  featureFlagConfigs: FeatureFlagRouterExecutionConfigs,
+) {
+  routerConfig.compatibilityVersion = foldRouterCompatibilityVersion(
+    routerConfig.compatibilityVersion,
+    Object.values(featureFlagConfigs.configByFeatureFlagName).map(({ engineConfig }) =>
+      getRequiredRouterCompatibilityVersion(engineConfig),
+    ),
+  );
+}
 
 function constructRouterSubgraph(result: FederationSuccess, s: SubgraphMetaData, index: number): RouterSubgraph {
   const subgraphConfig = result.subgraphConfigBySubgraphName.get(s.name);
@@ -137,22 +158,29 @@ async function handleSplitRouterConfig({
     return;
   }
 
+  const featureFlagsConfig =
+    config.feature_flags && config.feature_flags.length > 0
+      ? await buildFeatureFlagsConfig(
+          config,
+          inputFileLocation,
+          subgraphs,
+          options,
+          contractTagOptionsByFeatureFlagName,
+        )
+      : undefined;
+  if (featureFlagsConfig) {
+    foldFeatureFlagRouterCompatibilityVersions(routerConfig, featureFlagsConfig.featureFlagConfigs);
+  }
+
   const routerConfigJSON = toJsonString(RouterConfigSchema, routerConfig);
   const mapper = new Map<string, string>();
   mapper.set('', createHash('sha256').update(routerConfigJSON).digest('hex'));
   await writeFile(join(outputDir, routerConfigFile), routerConfigJSON);
-  if (!config.feature_flags || config.feature_flags.length === 0) {
+  if (!featureFlagsConfig) {
     await writeFile(join(outputDir, mapperFile), JSON.stringify(Object.fromEntries(mapper)));
     return;
   }
 
-  const ffConfigs = await buildFeatureFlagsConfig(
-    config,
-    inputFileLocation,
-    subgraphs,
-    options,
-    contractTagOptionsByFeatureFlagName,
-  );
   const ffDir = join(outputDir, featureFlagsDir);
   try {
     await mkdir(ffDir);
@@ -166,12 +194,14 @@ async function handleSplitRouterConfig({
     return;
   }
 
-  for (const [featureFlagName, featureFlagConfig] of Object.entries(ffConfigs.configByFeatureFlagName)) {
+  for (const [featureFlagName, featureFlagConfig] of Object.entries(
+    featureFlagsConfig.featureFlagConfigs.configByFeatureFlagName,
+  )) {
     const ffRouterConfig = create(RouterConfigSchema, {
       engineConfig: featureFlagConfig.engineConfig,
       version: featureFlagConfig.version,
       subgraphs: featureFlagConfig.subgraphs,
-      compatibilityVersion: routerConfig.compatibilityVersion,
+      compatibilityVersion: featureFlagsConfig.compatibilityVersionByFeatureFlagName.get(featureFlagName),
     });
 
     const routerConfigJson = toJsonString(RouterConfigSchema, ffRouterConfig);
@@ -192,13 +222,15 @@ async function handleEmbeddedRouterConfig({
   subgraphs,
 }: HandleRouterConfigParams) {
   if (!config.feature_flags || config.feature_flags.length > 0) {
-    routerConfig.featureFlagConfigs = await buildFeatureFlagsConfig(
+    const { featureFlagConfigs } = await buildFeatureFlagsConfig(
       config,
       inputFileLocation,
       subgraphs,
       options,
       contractTagOptionsByFeatureFlagName,
     );
+    routerConfig.featureFlagConfigs = featureFlagConfigs;
+    foldFeatureFlagRouterCompatibilityVersions(routerConfig, featureFlagConfigs);
   }
 
   const routerConfigJson = toJsonString(RouterConfigSchema, routerConfig);
@@ -338,7 +370,13 @@ export default (_: BaseCommandOptions) => {
       options.disableBaseContract ? undefined : contractTagOptions,
     );
 
-    if (!result.success) {
+    const routerSubgraphs = result.success
+      ? subgraphs.map((s, index) => constructRouterSubgraph(result, s, index))
+      : [];
+    const compositionErrors = result.success
+      ? getUnsupportedContextualArgumentSubgraphErrors(routerSubgraphs)
+      : result.errors;
+    if (!result.success || compositionErrors.length > 0) {
       const compositionErrorsTable = new Table({
         head: [pc.bold(pc.white('ERROR_MESSAGE'))],
         colWidths: [120],
@@ -348,7 +386,7 @@ export default (_: BaseCommandOptions) => {
       console.log(
         pc.red(`We found composition errors, while composing.\n${pc.bold('Please check the errors below:')}`),
       );
-      for (const compositionError of result.errors) {
+      for (const compositionError of compositionErrors) {
         compositionErrorsTable.push([compositionError.message]);
       }
       console.log(compositionErrorsTable.toString());
@@ -380,7 +418,7 @@ export default (_: BaseCommandOptions) => {
       // @TODO get router compatibility version programmatically
       routerCompatibilityVersion: ROUTER_COMPATIBILITY_VERSION_ONE,
       schemaVersionId: STATIC_SCHEMA_VERSION_ID,
-      subgraphs: subgraphs.map((s, index) => constructRouterSubgraph(result, s, index)),
+      subgraphs: routerSubgraphs,
     });
 
     await (options.splitConfigsEnabled
@@ -675,8 +713,9 @@ async function buildFeatureFlagsConfig(
   subgraphs: SubgraphMetaData[],
   options: any,
   contractTagOptionsByFeatureFlagName?: Map<string, ContractTagOptions>,
-): Promise<FeatureFlagRouterExecutionConfigs> {
+): Promise<FeatureFlagsConfig> {
   const ffConfigs: FeatureFlagRouterExecutionConfigs = create(FeatureFlagRouterExecutionConfigsSchema);
+  const compatibilityVersionByFeatureFlagName = new Map<string, string>();
 
   // @TODO This logic should exist only once in the shared package and reused across
   // control-plane and cli
@@ -841,7 +880,8 @@ async function buildFeatureFlagsConfig(
     });
 
     ffConfigs.configByFeatureFlagName[ff.name].version = STATIC_SCHEMA_VERSION_ID;
+    compatibilityVersionByFeatureFlagName.set(ff.name, featureRouterConfig.compatibilityVersion);
   }
 
-  return ffConfigs;
+  return { compatibilityVersionByFeatureFlagName, featureFlagConfigs: ffConfigs };
 }

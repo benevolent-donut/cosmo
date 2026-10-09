@@ -1,0 +1,13 @@
+type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+  id: ID!
+  includeSuspended: Boolean! @external
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+}
+
+type Profile {
+  displayName: String!
+}

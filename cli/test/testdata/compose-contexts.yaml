@@ -1,0 +1,19 @@
+version: 1
+subgraphs:
+  - name: moderation
+    routing_url: http://localhost:4001/graphql
+    schema:
+      file: ../fixtures/contexts/moderation.graphql
+  - name: users
+    routing_url: http://localhost:4002/graphql
+    schema:
+      file: ../fixtures/contexts/users.graphql
+
+feature_flags:
+  - name: my-feature-flag
+    feature_graphs:
+      - name: users-with-contexts
+        subgraph_name: users
+        routing_url: http://localhost:4002/graphql-feature-flag
+        schema:
+          file: ../fixtures/contexts/users-with-contexts.graphql

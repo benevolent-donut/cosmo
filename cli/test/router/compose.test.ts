@@ -2,12 +2,14 @@ import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { stripVTControlCharacters } from 'node:util';
 import { Command } from 'commander';
 import { describe, expect, test, vi } from 'vitest';
 import { createClient, createRouterTransport } from '@connectrpc/connect';
 import { fromJsonString } from '@bufbuild/protobuf';
 import { RouterConfigSchema } from '@wundergraph/cosmo-connect/dist/node/v1/node_pb';
+import { COMPOSITION_VERSION } from '@wundergraph/composition';
 import { PlatformService } from '@wundergraph/cosmo-connect/dist/platform/v1/platform_pb';
 import { resolve } from 'pathe';
 import ComposeCommand from '../../src/commands/router/commands/compose.js';
@@ -70,6 +72,100 @@ describe('router compose command tests', () => {
     await expectSplitOutputMatchSnapshot(outputDir, join('feature-flags', 'my-feature-flag.json'));
   });
 });
+
+describe('router compose contextual argument tests', () => {
+  test('that the embedded config is stamped with version 2 when only a feature flag uses contextual arguments', async () => {
+    const outputFile = join(tmpdir(), 'router-compose-contexts', randomUUID(), 'router-config.json');
+    await composeRouterConfig(['-i', resolve('./test/testdata/compose-contexts.yaml'), '-o', outputFile]);
+
+    const routerConfig = fromJsonString(RouterConfigSchema, await readFile(outputFile, 'utf8'));
+    expect(routerConfig.compatibilityVersion).toBe(`2:${COMPOSITION_VERSION}`);
+    expect(routerConfig.engineConfig?.datasourceConfigurations.some((d) => d.contextualArgumentConfiguration)).toBe(
+      false,
+    );
+    const featureFlagConfig = routerConfig.featureFlagConfigs?.configByFeatureFlagName['my-feature-flag'];
+    expect(
+      featureFlagConfig?.engineConfig?.datasourceConfigurations.some((d) => d.contextualArgumentConfiguration),
+    ).toBe(true);
+  });
+
+  test('that the split base config is stamped with version 2 when only a feature flag uses contextual arguments', async () => {
+    const outputDir = join(tmpdir(), 'router-compose-contexts-split', randomUUID());
+    await composeRouterConfig([
+      '-i',
+      resolve('./test/testdata/compose-contexts.yaml'),
+      '-o',
+      outputDir,
+      '--split-configs-enabled',
+    ]);
+
+    const baseJson = await readFile(join(outputDir, 'router-config.json'), 'utf8');
+    const featureFlagJson = await readFile(join(outputDir, 'feature-flags', 'my-feature-flag.json'), 'utf8');
+    const base = fromJsonString(RouterConfigSchema, baseJson);
+    const featureFlag = fromJsonString(RouterConfigSchema, featureFlagJson);
+    expect(base.compatibilityVersion).toBe(`2:${COMPOSITION_VERSION}`);
+    expect(base.engineConfig?.datasourceConfigurations.some((d) => d.contextualArgumentConfiguration)).toBe(false);
+    expect(featureFlag.compatibilityVersion).toBe(`2:${COMPOSITION_VERSION}`);
+    expect(featureFlag.engineConfig?.datasourceConfigurations.some((d) => d.contextualArgumentConfiguration)).toBe(
+      true,
+    );
+    expect(JSON.parse(await readFile(join(outputDir, 'mapper.json'), 'utf8'))).toStrictEqual({
+      '': createHash('sha256').update(baseJson).digest('hex'),
+      'my-feature-flag': createHash('sha256').update(featureFlagJson).digest('hex'),
+    });
+  });
+
+  test('that a split feature flag config keeps the version of its own content', async () => {
+    const outputDir = join(tmpdir(), 'router-compose-contexts-split', randomUUID());
+    await composeRouterConfig([
+      '-i',
+      resolve('./test/testdata/compose-contexts-in-base.yaml'),
+      '-o',
+      outputDir,
+      '--split-configs-enabled',
+    ]);
+
+    const base = fromJsonString(RouterConfigSchema, await readFile(join(outputDir, 'router-config.json'), 'utf8'));
+    const featureFlag = fromJsonString(
+      RouterConfigSchema,
+      await readFile(join(outputDir, 'feature-flags', 'my-feature-flag.json'), 'utf8'),
+    );
+    expect(base.compatibilityVersion).toBe(`2:${COMPOSITION_VERSION}`);
+    expect(featureFlag.compatibilityVersion).toBe(`1:${COMPOSITION_VERSION}`);
+  });
+
+  test('that a gRPC subgraph with contextual arguments fails composition', async () => {
+    const outputFile = join(tmpdir(), 'router-compose-contexts-grpc', randomUUID(), 'router-config.json');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exitCode = process.exitCode;
+
+    try {
+      await composeRouterConfig(['-i', resolve('./test/testdata/compose-contexts-grpc.yaml'), '-o', outputFile]);
+
+      expect(process.exitCode).toBe(1);
+      expect(existsSync(outputFile)).toBe(false);
+      const output = stripVTControlCharacters(logSpy.mock.calls.flat().join(' '))
+        .replaceAll(/[─│┌┐└┘├┤]/g, ' ')
+        .replaceAll(/\s+/g, ' ');
+      expect(output).toContain(
+        'The subgraph "users" is a gRPC service subgraph and defines the following argument with "@fromContext":' +
+          ' "User.profile(includeSuspended: ...)". Contextual arguments are only supported in GraphQL subgraphs.',
+      );
+    } finally {
+      process.exitCode = exitCode;
+      logSpy.mockRestore();
+    }
+  });
+});
+
+async function composeRouterConfig(args: string[]) {
+  const client: Client = {
+    platform: createClient(PlatformService, mockPlatformTransport()),
+  };
+  const program = new Command();
+  program.addCommand(ComposeCommand({ client }));
+  await program.parseAsync(['compose', ...args], { from: 'user' });
+}
 
 async function expectSplitOutputMatchSnapshot(outputDir: string, name: string) {
   const content = await readFile(join(outputDir, name), 'utf8');

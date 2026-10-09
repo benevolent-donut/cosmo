@@ -1,0 +1,8 @@
+type User @key(fields: "id") {
+  id: ID!
+  profile: Profile
+}
+
+type Profile {
+  displayName: String!
+}

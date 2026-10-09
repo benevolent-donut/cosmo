@@ -1,0 +1,13 @@
+type Query {
+  moderationQueue(id: ID!): ModerationQueue
+}
+
+type ModerationQueue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean!
+  flaggedUsers: [User!]!
+}
+
+type User @key(fields: "id", resolvable: false) {
+  id: ID!
+}

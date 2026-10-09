@@ -1,0 +1,12 @@
+version: 1
+subgraphs:
+  - name: moderation
+    routing_url: http://localhost:4001/graphql
+    schema:
+      file: ../fixtures/contexts/moderation.graphql
+  - name: users
+    routing_url: localhost:4002
+    grpc:
+      schema_file: ../fixtures/contexts/users-with-contexts.graphql
+      proto_file: ../fixtures/contexts/users.proto
+      mapping_file: ../fixtures/contexts/users-mapping.json
