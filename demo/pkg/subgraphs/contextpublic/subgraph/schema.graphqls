@@ -1,0 +1,22 @@
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@external", "@requires"])
+
+type Query {
+  post(id: ID!): Post
+}
+
+type Post @key(fields: "id") {
+  id: ID!
+  author: User!
+  includeSuspended: Boolean
+}
+
+type ModerationQueue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean! @external
+  policyLevel: Int @requires(fields: "includeSuspended")
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  handle: String
+}

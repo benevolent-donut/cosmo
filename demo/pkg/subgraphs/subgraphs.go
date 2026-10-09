@@ -28,6 +28,9 @@ import (
 
 	"github.com/wundergraph/cosmo/demo/pkg/injector"
 	"github.com/wundergraph/cosmo/demo/pkg/subgraphs/availability"
+	"github.com/wundergraph/cosmo/demo/pkg/subgraphs/contextmoderation"
+	"github.com/wundergraph/cosmo/demo/pkg/subgraphs/contextpublic"
+	"github.com/wundergraph/cosmo/demo/pkg/subgraphs/contextusers"
 	"github.com/wundergraph/cosmo/demo/pkg/subgraphs/countries"
 	"github.com/wundergraph/cosmo/demo/pkg/subgraphs/employees"
 	"github.com/wundergraph/cosmo/demo/pkg/subgraphs/family"
@@ -48,6 +51,10 @@ const (
 	CountriesDefaultDemoURL    = "http://localhost:4009/graphql"
 	ProductsFgDefaultDemoURL   = "http://localhost:4010/graphql"
 	ProjectsDefaultDemoURL     = "dns:///localhost:4011"
+
+	ContextModerationDefaultDemoURL = "http://localhost:4012/graphql"
+	ContextPublicDefaultDemoURL     = "http://localhost:4013/graphql"
+	ContextUsersDefaultDemoURL      = "http://localhost:4014/graphql"
 )
 
 type Ports struct {
@@ -200,6 +207,18 @@ func MoodHandler(opts *SubgraphOptions) http.Handler {
 
 func CountriesHandler(opts *SubgraphOptions) http.Handler {
 	return subgraphHandler(countries.NewSchema(opts.NatsPubSubByProviderID))
+}
+
+func ContextModerationHandler() http.Handler {
+	return subgraphHandler(contextmoderation.NewSchema())
+}
+
+func ContextPublicHandler() http.Handler {
+	return subgraphHandler(contextpublic.NewSchema())
+}
+
+func ContextUsersHandler() http.Handler {
+	return subgraphHandler(contextusers.NewSchema())
 }
 
 func New(ctx context.Context, config *Config) (*Subgraphs, error) {

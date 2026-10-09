@@ -1,0 +1,57 @@
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+
+type Query {
+  moderationQueue(id: ID!): ModerationQueue
+  moderationQueues: [ModerationQueue!]!
+  queueGrid: [[ModerationQueue!]!]!
+  queues: [Queue!]!
+  scopes: [Scope!]!
+  organization(id: ID!): Organization
+}
+
+type Mutation {
+  flagUser(queueId: ID!, userId: ID!): ModerationQueue!
+}
+
+type Subscription {
+  queueUpdated(id: ID!): ModerationQueue!
+}
+
+interface Queue {
+  id: ID!
+  includeSuspended: Boolean!
+  flaggedUsers: [User!]!
+}
+
+type ModerationQueue implements Queue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean!
+  flaggedUsers: [User!]!
+  flaggedUserPages: [[User!]!]!
+  team: Team
+}
+
+type AppealQueue implements Queue @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean!
+  showSuspended: Boolean
+  flaggedUsers: [User!]!
+}
+
+type Team @key(fields: "id") {
+  id: ID!
+  members: [User!]!
+}
+
+union Scope = ModerationQueue | AppealQueue | Team
+
+type Organization @key(fields: "id") {
+  id: ID!
+  includeSuspended: Boolean
+  queues: [ModerationQueue!]!
+  members: [User!]!
+}
+
+type User @key(fields: "id", resolvable: false) {
+  id: ID!
+}

@@ -1,0 +1,62 @@
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key", "@external", "@requires", "@context", "@fromContext"])
+
+directive @context(name: String!) repeatable on INTERFACE | OBJECT | UNION
+directive @fromContext(field: ContextFieldValue) on ARGUMENT_DEFINITION
+scalar ContextFieldValue
+
+type Query @context(name: "viewer") {
+  viewerIncludeSuspended: Boolean
+}
+
+type ModerationQueue @key(fields: "id") @context(name: "userScope") @context(name: "policyScope") @context(name: "peerScope") {
+  id: ID!
+  includeSuspended: Boolean! @external
+  policyLevel: Int @external
+  flaggedUsers: [User!]! @external
+  summary(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): String
+}
+
+type Post @key(fields: "id") @context(name: "userScope") {
+  id: ID!
+  includeSuspended: Boolean @external
+}
+
+type Organization @key(fields: "id") @context(name: "userScope") {
+  id: ID!
+  includeSuspended: Boolean @external
+}
+
+interface Queue @context(name: "queueScope") {
+  id: ID!
+  includeSuspended: Boolean!
+}
+
+type AppealQueue @key(fields: "id") {
+  id: ID!
+  showSuspended: Boolean @external
+}
+
+type Team @key(fields: "id") {
+  id: ID!
+}
+
+union Scope @context(name: "scope") = ModerationQueue | AppealQueue | Team
+
+type User @key(fields: "id") {
+  id: ID!
+  handle: String @external
+  friends: [User!]!
+  profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+  badge(level: Int @fromContext(field: "$policyScope { policyLevel }")): String
+  peers(ids: [ID] @fromContext(field: "$peerScope { flaggedUsers { id } }")): String
+  queueView(includeSuspended: Boolean @fromContext(field: "$queueScope { includeSuspended }")): String
+  scopeView(show: Boolean @fromContext(field: "$scope ... on ModerationQueue { includeSuspended } ... on AppealQueue { showSuspended }")): String
+  viewerView(includeSuspended: Boolean @fromContext(field: "$viewer { viewerIncludeSuspended }")): String
+  digest(locale: String, includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }"), level: Int @fromContext(field: "$policyScope { policyLevel }")): String
+  signature(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): String @requires(fields: "handle")
+}
+
+type Profile {
+  displayName: String!
+  includeSuspended: Boolean
+}
