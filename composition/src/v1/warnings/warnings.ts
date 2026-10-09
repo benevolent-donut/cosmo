@@ -1,8 +1,9 @@
 import { Warning } from '../../warnings/types';
-import { QUOTATION_JOIN } from '../../utils/string-constants';
+import { FROM_CONTEXT, QUOTATION_JOIN } from '../../utils/string-constants';
 import type {
   InvalidRepeatedComposedDirectiveWarningParams,
   OverrideDirectiveLabelArgumentWarningParams,
+  PartiallyContextualArgumentWarningParams,
   ProvidesOnUnionWarningParams,
   ProvidesWithInterfaceFieldSelectionWarningParams,
   SingleFederatedInputFieldOneOfWarningParams,
@@ -303,6 +304,26 @@ export function overrideDirectiveLabelArgumentWarning({
       ` The "label" argument is currently unsupported and will be ignored.` +
       ` However, please note the same functionality can be achieved through Feature Flags:` +
       ` https://wundergraph.com/learn/feature-flags-foundations`,
+    subgraph: {
+      name: subgraphName,
+    },
+  });
+}
+
+export function partiallyContextualArgumentWarning({
+  coords,
+  fromContextSubgraphNames,
+  subgraphName,
+}: PartiallyContextualArgumentWarningParams): Warning {
+  return new Warning({
+    message:
+      `The argument "${coords}" defines "@${FROM_CONTEXT}" in the following subgraph` +
+      (fromContextSubgraphNames.length > 1 ? 's' : '') +
+      `: "` +
+      fromContextSubgraphNames.join(QUOTATION_JOIN) +
+      `". It is also defined without "@${FROM_CONTEXT}" in the subgraph "${subgraphName}".` +
+      ` The argument is removed from the federated graph, so the subgraph "${subgraphName}" never receives a` +
+      ` value for it.`,
     subgraph: {
       name: subgraphName,
     },

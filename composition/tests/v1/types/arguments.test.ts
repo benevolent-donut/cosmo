@@ -7,6 +7,7 @@ import {
   incompatibleInputValueDefaultValueTypeError,
   incompatibleMergedTypesError,
   type InputValueData,
+  INT_SCALAR,
   type InterfaceDefinitionData,
   invalidNamedTypeError,
   type InvalidRequiredInputValueData,
@@ -366,6 +367,43 @@ describe('Argument federation tests', () => {
       ),
     );
   });
+
+  test('that an argument type error of a field defined by @interfaceObject types is returned once', () => {
+    const { errors } = federateSubgraphsFailure([subgraphI, subgraphJ, subgraphK], ROUTER_COMPATIBILITY_VERSION_ONE);
+    expect(errors).toStrictEqual([
+      incompatibleMergedTypesError({
+        actualType: STRING_SCALAR,
+        coords: 'Interface.field(input: ...)',
+        expectedType: INT_SCALAR,
+        isArgument: true,
+      }),
+    ]);
+  });
+
+  test('that an argument default value error of a field defined by @interfaceObject types is returned once', () => {
+    const { errors } = federateSubgraphsFailure([subgraphI, subgraphL, subgraphM], ROUTER_COMPATIBILITY_VERSION_ONE);
+    expect(errors).toStrictEqual([
+      incompatibleInputValueDefaultValuesError(prefix, 'Interface.field(input: ...)', ['subgraph-m'], '1', '2'),
+    ]);
+  });
+
+  test('that argument and input field type errors are returned in the order the subgraphs are merged', () => {
+    const { errors } = federateSubgraphsFailure([subgraphN, subgraphO], ROUTER_COMPATIBILITY_VERSION_ONE);
+    expect(errors).toStrictEqual([
+      incompatibleMergedTypesError({
+        actualType: STRING_SCALAR,
+        coords: 'Query.dummy(input: ...)',
+        expectedType: INT_SCALAR,
+        isArgument: true,
+      }),
+      incompatibleMergedTypesError({
+        actualType: STRING_SCALAR,
+        coords: 'Input.field',
+        expectedType: INT_SCALAR,
+        isArgument: false,
+      }),
+    ]);
+  });
 });
 
 function subgraphWithArgument(name: string, typeName: string): Subgraph {
@@ -515,6 +553,100 @@ const subgraphH: Subgraph = {
     extend type Entity @key(fields: "id") {
       id: Int!
       test: Float!
+    }
+  `),
+};
+
+const subgraphI: Subgraph = {
+  name: 'subgraph-i',
+  url: '',
+  definitions: parse(`
+    type Query {
+      interface: Interface!
+    }
+
+    interface Interface @key(fields: "id") {
+      id: ID!
+    }
+
+    type EntityOne implements Interface @key(fields: "id") {
+      id: ID!
+    }
+
+    type EntityTwo implements Interface @key(fields: "id") {
+      id: ID!
+    }
+  `),
+};
+
+const subgraphJ: Subgraph = {
+  name: 'subgraph-j',
+  url: '',
+  definitions: parse(`
+    type Interface @key(fields: "id") @interfaceObject {
+      id: ID!
+      field(input: Int): String @shareable
+    }
+  `),
+};
+
+const subgraphK: Subgraph = {
+  name: 'subgraph-k',
+  url: '',
+  definitions: parse(`
+    type Interface @key(fields: "id") @interfaceObject {
+      id: ID!
+      field(input: String): String @shareable
+    }
+  `),
+};
+
+const subgraphL: Subgraph = {
+  name: 'subgraph-l',
+  url: '',
+  definitions: parse(`
+    type Interface @key(fields: "id") @interfaceObject {
+      id: ID!
+      field(input: Int = 1): String @shareable
+    }
+  `),
+};
+
+const subgraphM: Subgraph = {
+  name: 'subgraph-m',
+  url: '',
+  definitions: parse(`
+    type Interface @key(fields: "id") @interfaceObject {
+      id: ID!
+      field(input: Int = 2): String @shareable
+    }
+  `),
+};
+
+const subgraphN: Subgraph = {
+  name: 'subgraph-n',
+  url: '',
+  definitions: parse(`
+    type Query {
+      dummy(input: Int): String @shareable
+    }
+
+    input Input {
+      field: Int
+    }
+  `),
+};
+
+const subgraphO: Subgraph = {
+  name: 'subgraph-o',
+  url: '',
+  definitions: parse(`
+    type Query {
+      dummy(input: String): String @shareable
+    }
+
+    input Input {
+      field: String
     }
   `),
 };

@@ -23,24 +23,48 @@ import {
   type SemanticNonNullLevelsIndexOutOfBoundsErrorParams,
   type SemanticNonNullLevelsNonNullErrorParams,
   type DirectlyProvidedInterfaceFieldErrorParams,
+  type AliasInContextSelectionErrorParams,
+  type ContextSelectionSetterErrorParams,
+  type ContextSelectionTypeConditionErrorParams,
+  type ContextSetterImplementsInterfaceObjectErrorParams,
+  type ContextualArgumentWithoutLocalKeyErrorParams,
+  type DirectiveInContextSelectionErrorParams,
+  type IncompatibleContextSelectionTypeErrorParams,
+  type InvalidArgumentValueInFieldSetErrorParams,
+  type InvalidContextSelectionForSetterErrorParams,
+  type MissingContextAuthorizationRequirementsErrorParams,
+  type MultipleContextSelectionLeavesErrorParams,
+  type NonObjectContextTypeConditionErrorParams,
+  type RootOperationTypeContextErrorParams,
+  type UndefinedRequiredArgumentInFieldSetErrorParams,
+  type UnparsableContextSelectionErrorParams,
+  type UnusedContextTypeConditionErrorParams,
+  type VariableInContextSelectionErrorParams,
 } from './types/params';
 import { type UnresolvableFieldData } from '../resolvability-graph/utils/utils';
 import {
   AND_UPPER,
   ARGUMENT,
+  AUTHENTICATED,
+  CONTEXT,
+  EXTERNAL,
   FIELD,
   FIELD_PATH,
   FROM_CONTEXT,
   IN_UPPER,
   INPUT_FIELD,
   INTERFACE,
+  INTERFACE_OBJECT,
+  KEY,
   LEVELS,
   LITERAL_NEW_LINE,
   LITERAL_PERIOD,
+  NAME,
   NOT_UPPER,
   OBJECT,
   OR_UPPER,
   QUOTATION_JOIN,
+  REQUIRES_SCOPES,
   SUBSCRIPTION_FIELD_CONDITION,
   SUBSCRIPTION_FILTER,
   SUBSCRIPTION_FILTER_CONDITION,
@@ -2204,5 +2228,307 @@ export function intersectingExcludeAndIncludeContractTagsError(tagNames: Array<s
       ` provided to both the include and exclude tag sets (which must be mutually exclusive): "` +
       tagNames.join(QUOTATION_JOIN) +
       `".`,
+  );
+}
+
+export function contextNameUnderscoreErrorMessage(name: string): string {
+  return (
+    `The argument "${NAME}" is defined with the value "${name}", which contains an underscore.` +
+    ` A context name must start with a letter and contain only letters and digits.`
+  );
+}
+
+export function invalidContextNameErrorMessage(name: string): string {
+  return (
+    `The argument "${NAME}" is defined with the value "${name}".` +
+    ` A context name must start with a letter and contain only letters and digits.`
+  );
+}
+
+export const fromContextOnDirectiveDefinitionArgumentErrorMessage = `"@${FROM_CONTEXT}" cannot be defined on an argument of a directive definition.`;
+
+export function fromContextOnInterfaceFieldErrorMessage(fieldCoords: string): string {
+  return `"@${FROM_CONTEXT}" cannot be defined on an argument of the Interface field "${fieldCoords}".`;
+}
+
+export const fromContextDefaultValueErrorMessage = `An argument that defines "@${FROM_CONTEXT}" cannot define a default value.`;
+
+export function fromContextOnInterfaceObjectFieldErrorMessage(typeName: TypeName): string {
+  return (
+    `"@${FROM_CONTEXT}" cannot be defined on an argument of a field of the type "${typeName}",` +
+    ` which is declared "@${INTERFACE_OBJECT}".`
+  );
+}
+
+export function undefinedContextReferenceErrorMessage(value?: string): string {
+  if (value === undefined) {
+    return `The argument "${FIELD}" is not defined, so the directive names no context.`;
+  }
+  return (
+    `The argument "${FIELD}" is defined with the value "${value}".` +
+    ` The value must be "$", a context name and a selection, for example "$userScope { includeSuspended }".`
+  );
+}
+
+export function undefinedContextErrorMessage(contextName: string): string {
+  return (
+    `The context "${contextName}" is not set by any type in this subgraph.` +
+    ` "@${FROM_CONTEXT}" can only reference a context that is set with "@${CONTEXT}" in the same subgraph.`
+  );
+}
+
+export function multipleContextSelectionFieldsErrorMessage(selection: string): string {
+  return (
+    `The selection "${selection}" selects more than one field.` +
+    ` A context selection must resolve to exactly one field.`
+  );
+}
+
+export function mixedContextSelectionErrorMessage(selection: string): string {
+  return (
+    `The selection "${selection}" combines fields and inline fragments at the top level.` +
+    ` A context selection must be either a single field or a list of inline fragments with type conditions.`
+  );
+}
+
+export function duplicateContextTypeConditionErrorMessage({
+  selection,
+  typeName,
+}: ContextSelectionTypeConditionErrorParams): string {
+  return (
+    `The selection "${selection}" defines more than one top-level inline fragment with the type condition` +
+    ` "${typeName}".`
+  );
+}
+
+export function contextFragmentWithoutTypeConditionErrorMessage(selection: string): string {
+  return `The selection "${selection}" defines a top-level inline fragment without a type condition.`;
+}
+
+export function fragmentSpreadInContextSelectionErrorMessage(selection: string): string {
+  return `The selection "${selection}" contains a fragment spread. A context selection can only use inline fragments.`;
+}
+
+export function unparsableContextSelectionErrorMessage({
+  reason,
+  selection,
+}: UnparsableContextSelectionErrorParams): string {
+  let message = `The selection "${selection}" could not be parsed.`;
+  if (reason) {
+    message += `\n The reason provided was: ` + reason;
+  }
+  return message;
+}
+
+export function multipleContextSelectionDefinitionsErrorMessage(definitionCount: number): string {
+  return (
+    `The selection defines ${definitionCount} definitions,` +
+    ` but a context selection must define a single selection set.`
+  );
+}
+
+export function invalidContextSelectionForSetterErrorMessage({
+  contextName,
+  fieldSetErrorMessage,
+  selection,
+  setterTypeName,
+}: InvalidContextSelectionForSetterErrorParams): string {
+  return (
+    `The selection "${selection}" is invalid for the type "${setterTypeName}", which sets the context` +
+    ` "${contextName}":\n` +
+    fieldSetErrorMessage
+  );
+}
+
+export function undefinedRequiredArgumentInFieldSetErrorMessage({
+  argumentName,
+  fieldCoords,
+  fieldSet,
+}: UndefinedRequiredArgumentInFieldSetErrorParams): string {
+  return (
+    ` The following field set is invalid:\n  "${fieldSet}"\n` +
+    ` This is because "${fieldCoords}" requires the argument "${argumentName}", which the selection does not define.`
+  );
+}
+
+export function invalidArgumentValueInFieldSetErrorMessage({
+  argumentName,
+  fieldCoords,
+  fieldSet,
+  typeString,
+  value,
+}: InvalidArgumentValueInFieldSetErrorParams): string {
+  return (
+    ` The following field set is invalid:\n  "${fieldSet}"\n` +
+    ` This is because the value "${value}" of the argument "${argumentName}" on "${fieldCoords}" is not a valid` +
+    ` "${typeString}".`
+  );
+}
+
+export function variableInContextSelectionErrorMessage({
+  selection,
+  variableName,
+}: VariableInContextSelectionErrorParams): string {
+  return `The selection "${selection}" uses the variable "$${variableName}". A context selection cannot use variables.`;
+}
+
+export function directiveInContextSelectionErrorMessage({
+  directiveName,
+  selection,
+}: DirectiveInContextSelectionErrorParams): string {
+  return (
+    `The selection "${selection}" defines the directive "@${directiveName}".` +
+    ` A context selection cannot define directives, including "@skip" and "@include".`
+  );
+}
+
+export function aliasInContextSelectionErrorMessage({ alias, selection }: AliasInContextSelectionErrorParams): string {
+  return `The selection "${selection}" defines the alias "${alias}". A context selection cannot define an alias.`;
+}
+
+export function interfaceObjectInContextSelectionErrorMessage({
+  selection,
+  typeName,
+}: ContextSelectionTypeConditionErrorParams): string {
+  return (
+    `The selection "${selection}" visits the type "${typeName}", which is declared "@${INTERFACE_OBJECT}".` +
+    ` An "@${INTERFACE_OBJECT}" type cannot set a context or be read by a context selection.`
+  );
+}
+
+export function incompatibleContextSelectionTypeErrorMessage({
+  argumentType,
+  selection,
+  selectionType,
+  typeName,
+}: IncompatibleContextSelectionTypeErrorParams): string {
+  return (
+    `For the type "${typeName}", the selection "${selection}" resolves to "${selectionType}", which differs from` +
+    ` the argument type "${argumentType}".` +
+    ` The argument type must equal the selected type with every non-null wrapper removed.`
+  );
+}
+
+export function unknownContextTypeConditionErrorMessage({
+  selection,
+  typeName,
+}: ContextSelectionTypeConditionErrorParams): string {
+  return `The type condition "${typeName}" of the selection "${selection}" does not exist in this subgraph.`;
+}
+
+export function nonObjectContextTypeConditionErrorMessage({
+  selection,
+  typeName,
+  typeString,
+}: NonObjectContextTypeConditionErrorParams): string {
+  const article = /^[AEIO]/.test(typeString) ? 'an' : 'a';
+  return (
+    `The type condition "${typeName}" of the selection "${selection}" is ${article} ${typeString}.` +
+    ` Only Object types can be used as type conditions in a context selection.`
+  );
+}
+
+export function noApplicableContextTypeConditionErrorMessage({
+  contextName,
+  selection,
+  setterTypeName,
+}: ContextSelectionSetterErrorParams): string {
+  return (
+    `None of the type conditions of the selection "${selection}" applies to the type "${setterTypeName}",` +
+    ` which sets the context "${contextName}".`
+  );
+}
+
+export function unresolvableContextFragmentErrorMessage({
+  selection,
+  typeName,
+}: ContextSelectionTypeConditionErrorParams): string {
+  return `The inline fragment on "${typeName}" in the selection "${selection}" does not resolve to a single value.`;
+}
+
+export function unusedContextTypeConditionErrorMessage({
+  contextName,
+  selection,
+  typeName,
+}: UnusedContextTypeConditionErrorParams): string {
+  return (
+    `The type condition "${typeName}" of the selection "${selection}" does not apply to any type that sets the` +
+    ` context "${contextName}".`
+  );
+}
+
+export function multipleContextSelectionLeavesErrorMessage({
+  leafPaths,
+  selection,
+  setterTypeName,
+}: MultipleContextSelectionLeavesErrorParams): string {
+  return (
+    `The selection "${selection}" resolves to several fields for the type "${setterTypeName}": "` +
+    leafPaths.join(QUOTATION_JOIN) +
+    `". A context selection must resolve to exactly one field for each type that sets the context.`
+  );
+}
+
+export function contextualArgumentWithoutResolvableKeyErrorMessage(typeName: TypeName): string {
+  return (
+    `The type "${typeName}" defines a field with an argument that defines "@${FROM_CONTEXT}", so it must define at` +
+    ` least one "@${KEY}" that is resolvable in this subgraph.`
+  );
+}
+
+export function contextualArgumentWithoutLocalKeyErrorMessage({
+  externalFieldCoords,
+  typeName,
+}: ContextualArgumentWithoutLocalKeyErrorParams): string {
+  return (
+    `The type "${typeName}" defines a field with an argument that defines "@${FROM_CONTEXT}", so at least one of its` +
+    ` "@${KEY}" directives must select only fields that this subgraph resolves.` +
+    ` Every "@${KEY}" of "${typeName}" selects a field declared "@${EXTERNAL}": "` +
+    externalFieldCoords.join(QUOTATION_JOIN) +
+    `".`
+  );
+}
+
+export function rootOperationTypeContextErrorMessage({
+  operationType,
+  typeName,
+}: RootOperationTypeContextErrorParams): string {
+  return (
+    `The ${operationType} root type "${typeName}" cannot set a context that "@${FROM_CONTEXT}" reads, because` +
+    ` resolving the context would execute an additional ${operationType} root field.`
+  );
+}
+
+export function contextSetterImplementsInterfaceObjectError({
+  contextName,
+  interfaceObjectSubgraphNames,
+  interfaceTypeName,
+  setterTypeName,
+  subgraphName,
+}: ContextSetterImplementsInterfaceObjectErrorParams): Error {
+  const isPlural = interfaceObjectSubgraphNames.length > 1;
+  return new Error(
+    `The type "${setterTypeName}" sets the context "${contextName}" in the subgraph "${subgraphName}" and implements` +
+      ` the Interface "${interfaceTypeName}", which the subgraph` +
+      (isPlural ? 's' : '') +
+      ` "` +
+      interfaceObjectSubgraphNames.join(QUOTATION_JOIN) +
+      `" declare` +
+      (isPlural ? '' : 's') +
+      ` "@${INTERFACE_OBJECT}". A type that sets a context read by "@${FROM_CONTEXT}" cannot implement an Interface` +
+      ` that any subgraph declares "@${INTERFACE_OBJECT}".`,
+  );
+}
+
+export function missingContextAuthorizationRequirementsError({
+  contextName,
+  dependencyCoords,
+  fieldCoords,
+  parentTypeName,
+}: MissingContextAuthorizationRequirementsErrorParams): Error {
+  return new Error(
+    `The field "${fieldCoords}" reads "${dependencyCoords}" through the context "${contextName}".` +
+      ` "${dependencyCoords}" requires authorization, so "${fieldCoords}" or its parent type "${parentTypeName}"` +
+      ` must declare at least the same "@${AUTHENTICATED}" and "@${REQUIRES_SCOPES}" requirements.`,
   );
 }

@@ -9,6 +9,7 @@ export function internalSubgraphFromNormalization({
   return {
     conditionalFieldDataByCoords: normalization.conditionalFieldDataByCoordinates,
     configurationDataByTypeName: normalization.configurationDataByTypeName,
+    contextualArgumentDatas: normalization.contextualArgumentDatas,
     costs: normalization.costs,
     definitions: normalization.subgraphAST,
     directiveDefinitionByName: normalization.directiveDefinitionByName,

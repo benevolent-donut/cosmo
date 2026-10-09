@@ -1,3 +1,4 @@
+import { type OperationTypeNode } from 'graphql';
 import { type FieldData, type InputValueData, type ParentDefinitionData } from '../../schema-building/types/types';
 import {
   type ArgumentName,
@@ -108,4 +109,106 @@ export type InvalidArgumentValueErrorParams = {
 export type InvalidEntityReturnTypeErrorParams = {
   fieldCoords: string;
   returnTypeName: string;
+};
+
+export type ContextSelectionTypeConditionErrorParams = {
+  selection: string;
+  typeName: TypeName;
+};
+
+export type NonObjectContextTypeConditionErrorParams = {
+  selection: string;
+  typeName: TypeName;
+  typeString: string;
+};
+
+export type ContextSelectionSetterErrorParams = {
+  contextName: string;
+  selection: string;
+  setterTypeName: TypeName;
+};
+
+export type InvalidContextSelectionForSetterErrorParams = {
+  contextName: string;
+  fieldSetErrorMessage: string;
+  selection: string;
+  setterTypeName: TypeName;
+};
+
+export type UnusedContextTypeConditionErrorParams = {
+  contextName: string;
+  selection: string;
+  typeName: TypeName;
+};
+
+export type UnparsableContextSelectionErrorParams = {
+  selection: string;
+  reason?: string;
+};
+
+export type DirectiveInContextSelectionErrorParams = {
+  directiveName: DirectiveName;
+  selection: string;
+};
+
+export type AliasInContextSelectionErrorParams = {
+  alias: string;
+  selection: string;
+};
+
+export type VariableInContextSelectionErrorParams = {
+  selection: string;
+  variableName: string;
+};
+
+export type IncompatibleContextSelectionTypeErrorParams = {
+  argumentType: string;
+  selection: string;
+  selectionType: string;
+  typeName: TypeName;
+};
+
+export type MultipleContextSelectionLeavesErrorParams = {
+  leafPaths: Array<string>;
+  selection: string;
+  setterTypeName: TypeName;
+};
+
+export type UndefinedRequiredArgumentInFieldSetErrorParams = {
+  argumentName: ArgumentName;
+  fieldCoords: string;
+  fieldSet: string;
+};
+
+export type InvalidArgumentValueInFieldSetErrorParams = {
+  argumentName: ArgumentName;
+  fieldCoords: string;
+  fieldSet: string;
+  typeString: string;
+  value: string;
+};
+
+export type RootOperationTypeContextErrorParams = {
+  operationType: OperationTypeNode;
+  typeName: TypeName;
+};
+
+export type ContextualArgumentWithoutLocalKeyErrorParams = {
+  externalFieldCoords: Array<string>;
+  typeName: TypeName;
+};
+
+export type ContextSetterImplementsInterfaceObjectErrorParams = {
+  contextName: string;
+  interfaceObjectSubgraphNames: Array<SubgraphName>;
+  interfaceTypeName: TypeName;
+  setterTypeName: TypeName;
+  subgraphName: SubgraphName;
+};
+
+export type MissingContextAuthorizationRequirementsErrorParams = {
+  contextName: string;
+  dependencyCoords: string;
+  fieldCoords: string;
+  parentTypeName: TypeName;
 };

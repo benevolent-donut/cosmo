@@ -220,3 +220,23 @@ export type LinkImportData = {
   node?: ConstDirectiveNode;
   rename?: DirectiveName;
 };
+
+export type ContextFieldSelectionData = {
+  fieldSet: string;
+  kind: Kind.FIELD;
+};
+
+export type ContextFragmentSelectionData = {
+  fieldSetByTypeConditionName: Map<TypeName, string>;
+  kind: Kind.INLINE_FRAGMENT;
+};
+
+export type ContextSelectionData = ContextFieldSelectionData | ContextFragmentSelectionData;
+
+export type ContextualArgumentData = {
+  argumentName: ArgumentName;
+  contextName: string;
+  fieldName: FieldName;
+  parentTypeName: TypeName;
+  selectionDataBySetterTypeName: Map<TypeName, ContextSelectionData>;
+};

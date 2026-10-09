@@ -19,6 +19,8 @@ import {
   CONTEXT_DIRECTIVE,
   CONTEXT_FIELD_VALUE_SCALAR,
   FROM_CONTEXT_DIRECTIVE,
+  KEY_DIRECTIVE,
+  OPENFED_FIELD_SET,
   OVERRIDE_DIRECTIVE,
   POLICY_DIRECTIVE,
   SCHEMA_QUERY_DEFINITION,
@@ -90,7 +92,17 @@ describe('Unsupported directives test', () => {
       'a',
       `
       type Query {
-        a(a: ID @fromContext(field: "test")): ID
+        a: A
+      }
+
+      type A @context(name: "ctx") {
+        id: ID!
+        b: B!
+      }
+
+      type B @key(fields: "id") {
+        id: ID!
+        c(c: ID @fromContext(field: "$ctx { id }")): ID
       }
       `,
     );
@@ -99,17 +111,37 @@ describe('Unsupported directives test', () => {
       normalizeString(`
       ${SCHEMA_QUERY_DEFINITION}
       
+      ${CONTEXT_DIRECTIVE}
+
       ${FROM_CONTEXT_DIRECTIVE}
+
+      ${KEY_DIRECTIVE}
+
+      type A @context(name: "ctx") {
+        b: B!
+        id: ID!
+      }
+
+      type B @key(fields: "id") {
+        c(c: ID @fromContext(field: "$ctx { id }")): ID
+        id: ID!
+      }
       
       ${CONTEXT_FIELD_VALUE_SCALAR}
       
       type Query {
-        a(a: ID @fromContext(field: "test")): ID
+        a: A
       }
+
+      ${OPENFED_FIELD_SET}
     `),
     );
-    expect(warnings).toHaveLength(1);
+    expect(warnings).toHaveLength(2);
     expect(warnings).toStrictEqual([
+      unsupportedDirectiveWarning({
+        directiveName: CONTEXT,
+        subgraphName: 'a',
+      }),
       unsupportedDirectiveWarning({
         directiveName: FROM_CONTEXT,
         subgraphName: 'a',
@@ -124,7 +156,17 @@ describe('Unsupported directives test', () => {
       scalar ContextFieldValue
       
       type Query {
-        a(a: ID @fromContext(field: "test")): ID
+        a: A
+      }
+
+      type A @context(name: "ctx") {
+        id: ID!
+        b: B!
+      }
+
+      type B @key(fields: "id") {
+        id: ID!
+        c(c: ID @fromContext(field: "$ctx { id }")): ID
       }
       `,
     );
@@ -133,17 +175,37 @@ describe('Unsupported directives test', () => {
       normalizeString(`
       ${SCHEMA_QUERY_DEFINITION}
       
+      ${CONTEXT_DIRECTIVE}
+
       ${FROM_CONTEXT_DIRECTIVE}
+
+      ${KEY_DIRECTIVE}
+
+      type A @context(name: "ctx") {
+        b: B!
+        id: ID!
+      }
+
+      type B @key(fields: "id") {
+        c(c: ID @fromContext(field: "$ctx { id }")): ID
+        id: ID!
+      }
       
       ${CONTEXT_FIELD_VALUE_SCALAR}
       
       type Query {
-        a(a: ID @fromContext(field: "test")): ID
+        a: A
       }
+
+      ${OPENFED_FIELD_SET}
     `),
     );
-    expect(warnings).toHaveLength(1);
+    expect(warnings).toHaveLength(2);
     expect(warnings).toStrictEqual([
+      unsupportedDirectiveWarning({
+        directiveName: CONTEXT,
+        subgraphName: 'a',
+      }),
       unsupportedDirectiveWarning({
         directiveName: FROM_CONTEXT,
         subgraphName: 'a',

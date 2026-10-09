@@ -26,7 +26,7 @@ import {
   type TypeName,
 } from '../types/types';
 import { type ExecutionMultiFailure } from '../types/results';
-import { type LinkImportData } from '../v1/normalization/types/types';
+import { type ContextualArgumentData, type LinkImportData } from '../v1/normalization/types/types';
 import { type DirectiveDefinitionData } from '../directive-definition-data/types/types';
 
 export interface NormalizationFailure extends ExecutionMultiFailure {
@@ -38,6 +38,7 @@ export type NormalizationSuccess = {
   concreteTypeNamesByAbstractTypeName: Map<AbstractTypeName, Set<TypeName>>;
   conditionalFieldDataByCoordinates: Map<string, ConditionalFieldData>;
   configurationDataByTypeName: Map<TypeName, ConfigurationData>;
+  contextualArgumentDatas: Array<ContextualArgumentData>;
   costs: Costs;
   directiveDefinitionByName: Map<DirectiveName, DirectiveDefinitionNode>;
   entityInterfaces: Map<string, EntityInterfaceSubgraphData>;
