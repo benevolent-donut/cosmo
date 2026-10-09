@@ -325,6 +325,10 @@ func (l *Loader) Load(engineConfig *nodev1.EngineConfiguration, subgraphs []*nod
 				arg.SourceType = plan.FieldArgumentSource
 			case nodev1.ArgumentSource_OBJECT_FIELD:
 				arg.SourceType = plan.ObjectFieldSource
+			case nodev1.ArgumentSource_FROM_CONTEXT:
+				arg.SourceType = plan.ContextualArgumentSource
+			default:
+				return nil, nil, fmt.Errorf("unknown source type %q of the argument %q on the field %s.%s", argumentConfiguration.SourceType, argumentConfiguration.Name, configuration.TypeName, configuration.FieldName)
 			}
 			args = append(args, arg)
 		}
@@ -447,6 +451,10 @@ func (l *Loader) Load(engineConfig *nodev1.EngineConfiguration, subgraphs []*nod
 			)
 			if err != nil {
 				return nil, providers, fmt.Errorf("error creating schema configuration for data source %s: %w", in.Id, err)
+			}
+
+			if in.CustomGraphql.Grpc != nil && len(in.GetContextualArgumentConfiguration().GetArguments()) > 0 {
+				return nil, providers, fmt.Errorf("data source %s is a gRPC or plugin data source and defines contextual arguments, which are supported only for GraphQL data sources", in.Id)
 			}
 
 			grpcConfig := toGRPCConfiguration(in.CustomGraphql.Grpc, pluginsEnabled, routerEngineConfig.Execution.EnableGRPCWireEncoding)
@@ -691,6 +699,22 @@ func (l *Loader) dataSourceMetaData(in *nodev1.DataSourceConfiguration) *plan.Da
 		out.InterfaceObjects = append(out.InterfaceObjects, plan.EntityInterfaceConfiguration{
 			InterfaceTypeName: interfaceObjectConfiguration.InterfaceTypeName,
 			ConcreteTypeNames: interfaceObjectConfiguration.ConcreteTypeNames,
+		})
+	}
+	for _, contextualArgument := range in.GetContextualArgumentConfiguration().GetArguments() {
+		setters := make([]plan.ContextSetterConfiguration, 0, len(contextualArgument.Setters))
+		for _, setter := range contextualArgument.Setters {
+			setters = append(setters, plan.ContextSetterConfiguration{
+				TypeName:     setter.TypeName,
+				SelectionSet: setter.SelectionSet,
+			})
+		}
+		out.ContextualArguments = append(out.ContextualArguments, plan.ContextualArgumentConfiguration{
+			TypeName:     contextualArgument.TypeName,
+			FieldName:    contextualArgument.FieldName,
+			ArgumentName: contextualArgument.ArgumentName,
+			ContextName:  contextualArgument.ContextName,
+			Setters:      setters,
 		})
 	}
 
