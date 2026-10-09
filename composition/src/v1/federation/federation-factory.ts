@@ -825,12 +825,20 @@ export class FederationFactory {
   }
 
   pushInputValueMergeError(data: InputValueData, error: Error) {
-    // Arguments that define @fromContext in any subgraph are removed, so their merge errors wait for all subgraphs.
+    this.errors.push(error);
+    // An argument that defines @fromContext in any subgraph is removed, so its merge errors are withdrawn later.
     if (data.isArgument) {
       getValueOrDefault(this.argumentMergeErrorsByCoords, data.federatedCoords, () => []).push(error);
-      return;
     }
-    this.errors.push(error);
+  }
+
+  removeArgumentMergeErrors(coords: string) {
+    for (const error of this.argumentMergeErrorsByCoords.get(coords) ?? []) {
+      const index = this.errors.indexOf(error);
+      if (index > -1) {
+        this.errors.splice(index, 1);
+      }
+    }
   }
 
   handleInputValueInaccessibility(isParentInaccessible: boolean, inputValueData: InputValueData, parentCoords: string) {
@@ -1967,12 +1975,9 @@ export class FederationFactory {
     const fieldCoords = `${fieldData.renamedParentTypeName}.${fieldData.name}`;
     for (const [argumentName, inputValueData] of fieldData.argumentDataByName) {
       if (doesArgumentDefineFromContext(inputValueData)) {
+        this.removeArgumentMergeErrors(inputValueData.federatedCoords);
         validateContextualArgumentInstances(this, fieldData, inputValueData);
         continue;
-      }
-      const mergeErrors = this.argumentMergeErrorsByCoords.get(inputValueData.federatedCoords);
-      if (mergeErrors) {
-        this.errors.push(...mergeErrors);
       }
       if (fieldData.subgraphNames.size === inputValueData.subgraphNames.size) {
         argumentNames.push(argumentName);
