@@ -381,6 +381,14 @@ func (pg *PlanGenerator) buildRouterConfig(configFilePath string) (*nodev1.Route
 }
 
 func (pg *PlanGenerator) loadConfiguration(routerConfig *nodev1.RouterConfig, logger *zap.Logger, opts PlanGeneratorOptions) error {
+	compatibilityLogger := logger
+	if compatibilityLogger == nil {
+		compatibilityLogger = zap.NewNop()
+	}
+	if !execution_config.IsRouterCompatibleWithExecutionConfig(compatibilityLogger, routerConfig.GetCompatibilityVersion()) {
+		return fmt.Errorf(`the compatibility version "%s" is not compatible with this router version`, routerConfig.GetCompatibilityVersion())
+	}
+
 	routerEngineConfig := RouterEngineConfiguration{
 		StreamMetricStore: metric.NewNoopStreamMetricStore(),
 	}
