@@ -2974,10 +2974,7 @@ describe('@context and @fromContext validation tests', () => {
           contextualArgumentWithoutLocalKeyErrorMessage({ externalFieldCoords: ['User.handle'], typeName: 'User' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): returns an error that names only the @external fields of resolvable keys of the type of a contextual argument field', () => {
@@ -3006,10 +3003,7 @@ describe('@context and @fromContext validation tests', () => {
           contextualArgumentWithoutLocalKeyErrorMessage({ externalFieldCoords: ['User.handle'], typeName: 'User' }),
         ]),
       ]);
-      expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
-      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): composes if the only key field is an @external key field of an entity extension', () => {
@@ -3112,8 +3106,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
 
@@ -3164,8 +3160,10 @@ describe('@context and @fromContext validation tests', () => {
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(warnings).toStrictEqual([
-        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
-        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+        contextualArgumentRouterVersionWarning({
+          argumentCoords: ['User.profile(includeSuspended: ...)'],
+          subgraphName: 'users',
+        }),
       ]);
     });
   });
