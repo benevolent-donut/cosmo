@@ -322,8 +322,8 @@ export function partiallyContextualArgumentWarning({
       `: "` +
       fromContextSubgraphNames.join(QUOTATION_JOIN) +
       `". It is also defined without "@${FROM_CONTEXT}" in the subgraph "${subgraphName}".` +
-      ` The router populates the argument, so it is removed from the federated graph, and the subgraph` +
-      ` "${subgraphName}" never receives a value for it.`,
+      ` The argument is removed from the federated graph, so the subgraph "${subgraphName}" never receives a` +
+      ` value for it.`,
     subgraph: {
       name: subgraphName,
     },

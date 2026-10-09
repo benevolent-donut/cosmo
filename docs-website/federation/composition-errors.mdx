@@ -24,7 +24,7 @@ This migration approach, while cumbersome, ensures that the federated contract i
 
 ## @context and @fromContext
 
-Composition rejects every invalid use of `@context` and `@fromContext`.
+Composition rejects invalid uses of `@context` and `@fromContext` with the errors below.
 A subgraph error names the directive instance and lists every reason, for example:
 
 ```text
@@ -112,7 +112,7 @@ This error has two causes:
 - Another subgraph defines the same argument without `@fromContext`, as non-null and without a default value. Make that definition nullable, or give it a default value. Definitions on `@external` fields are ignored.
 
 When the other definition is nullable or has a default value, composition succeeds with a warning.
-The router populates the argument, so the subgraph without `@fromContext` never receives a value for it.
+The argument is removed from the federated graph, so the subgraph without `@fromContext` never receives a value for it.
 
 ### Authorization of context data
 
