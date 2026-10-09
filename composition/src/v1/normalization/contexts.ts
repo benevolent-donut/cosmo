@@ -2,6 +2,7 @@ import {
   BREAK,
   type ConstDirectiveNode,
   type ConstValueNode,
+  type DirectiveNode,
   type DocumentNode,
   type FieldNode,
   type InlineFragmentNode,
@@ -10,6 +11,7 @@ import {
   OperationTypeNode,
   print,
   type SelectionSetNode,
+  specifiedDirectives,
   type TypeNode,
   visit,
 } from 'graphql';
@@ -76,6 +78,7 @@ import {
 } from '../../errors/errors';
 import {
   CONTEXT,
+  DEFER,
   FIELD,
   FIRST_ORDINAL,
   FROM_CONTEXT,
@@ -83,11 +86,12 @@ import {
   LITERAL_PERIOD,
   NAME,
   SCALAR,
+  STREAM,
   STRING_SCALAR,
   TYPENAME,
 } from '../../utils/string-constants';
 import { getValueOrDefault, kindToNodeType, numberToOrdinal } from '../../utils/utils';
-import { type ArgumentName, type TypeName } from '../../types/types';
+import { type ArgumentName, type DirectiveName, type TypeName } from '../../types/types';
 
 type ContextReference = {
   contextName: string;
@@ -133,6 +137,12 @@ type ResolveContextSelectionTypeParams = {
   typeName: TypeName;
   fragmentTypeName?: TypeName;
 };
+
+const EXECUTABLE_DIRECTIVE_NAMES = new Set<DirectiveName>([
+  DEFER,
+  STREAM,
+  ...specifiedDirectives.map(({ name }) => name),
+]);
 
 export function validateContexts(nf: NormalizationFactory): Array<ContextualArgumentData> {
   const directiveDefinitionApplications = getDirectiveDefinitionFromContextApplications(nf);
@@ -1014,6 +1024,10 @@ function markSelectionSetFields(
   parentData: ParentDefinitionData,
 ): boolean {
   for (const selection of selectionSet.selections) {
+    // The directives of a selection are resolved before its field, so an undefined directive stops the walk.
+    if (!areDirectivesDefined(nf, selection.directives)) {
+      return false;
+    }
     switch (selection.kind) {
       case Kind.FIELD: {
         const fieldName = selection.name.value;
@@ -1062,4 +1076,10 @@ function markSelectionSetFields(
     }
   }
   return true;
+}
+
+function areDirectivesDefined(nf: NormalizationFactory, directiveNodes: ReadonlyArray<DirectiveNode> = []): boolean {
+  return directiveNodes.every(
+    ({ name }) => nf.directiveDefinitionDataByName.has(name.value) || EXECUTABLE_DIRECTIVE_NAMES.has(name.value),
+  );
 }

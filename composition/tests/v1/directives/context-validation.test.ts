@@ -1714,6 +1714,148 @@ describe('@context and @fromContext validation tests', () => {
       ]);
     });
 
+    test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines @defer', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended @defer }")): Profile
+            }
+            type Profile { displayName: String! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.profile(includeSuspended: ...)', FIRST_ORDINAL, [
+          directiveInContextSelectionErrorMessage({
+            directiveName: 'defer',
+            selection: '{ includeSuspended @defer }',
+          }),
+        ]),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error if the selected field defines an undefined directive', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended @unknown }")): Profile
+            }
+            type Profile { displayName: String! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.profile(includeSuspended: ...)', FIRST_ORDINAL, [
+          directiveInContextSelectionErrorMessage({
+            directiveName: 'unknown',
+            selection: '{ includeSuspended @unknown }',
+          }),
+        ]),
+        invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error if an inline fragment of the selection defines an undefined directive', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+            }
+            type User @key(fields: "id") {
+              id: ID!
+              profile(
+                includeSuspended: Boolean
+                  @fromContext(field: "$userScope ... on ModerationQueue @unknown { includeSuspended }")
+              ): Profile
+            }
+            type Profile { displayName: String! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.profile(includeSuspended: ...)', FIRST_ORDINAL, [
+          directiveInContextSelectionErrorMessage({
+            directiveName: 'unknown',
+            selection: '... on ModerationQueue @unknown { includeSuspended }',
+          }),
+        ]),
+        invalidExternalDirectiveError('ModerationQueue.includeSuspended'),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('CONTEXT_INVALID_SELECTION: returns an error if a nested field of the selection defines an undefined directive', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext", "@shareable"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              owner: Moderator! @external
+            }
+            type Moderator @shareable { id: ID! }
+            type User @key(fields: "id") {
+              id: ID!
+              note(ownerId: ID @fromContext(field: "$userScope { owner @unknown { id } }")): String
+            }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.note(ownerId: ...)', FIRST_ORDINAL, [
+          directiveInContextSelectionErrorMessage({
+            directiveName: 'unknown',
+            selection: '{ owner @unknown { id } }',
+          }),
+        ]),
+        invalidExternalDirectiveError('ModerationQueue.owner'),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
     test('CONTEXT_INVALID_SELECTION: returns an error if the selection defines an alias', () => {
       const { errors, warnings } = normalizeSubgraphFailure(
         createSubgraph(
