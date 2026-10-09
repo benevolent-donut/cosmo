@@ -98,8 +98,9 @@ These reasons reject a selection:
 ### Keys of the type with the contextual argument
 
 - `The type "..." defines a field with an argument that defines "@fromContext", so it must define at least one "@key" that is resolvable in this subgraph.`
-- `The type "..." defines a field with an argument that defines "@fromContext", so at least one of its "@key" directives must select only fields that this subgraph resolves.`
+- `The type "..." defines a field with an argument that defines "@fromContext", so it must define at least one "@key" that is resolvable in this subgraph and selects no field declared "@external".`
 
+The router resolves a field with a contextual argument through an entity fetch to its subgraph, and that fetch can only use a resolvable `@key` without `@external` fields.
 Add a `@key` to the type whose fields are not `@external` and whose `resolvable` argument is `true` or omitted.
 
 ### Non-null contextual arguments

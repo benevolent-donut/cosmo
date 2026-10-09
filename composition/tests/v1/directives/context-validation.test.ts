@@ -2948,6 +2948,70 @@ describe('@context and @fromContext validation tests', () => {
       expect(warnings).toStrictEqual([]);
     });
 
+    test('returns an error if the only key without @external fields of the type of a contextual argument field is unresolvable', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+            }
+            type User @key(fields: "handle") @key(fields: "id", resolvable: false) {
+              id: ID!
+              handle: String! @external
+              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+            }
+            type Profile { displayName: String! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.profile(includeSuspended: ...)', FIRST_ORDINAL, [
+          contextualArgumentWithoutLocalKeyErrorMessage({ externalFieldCoords: ['User.handle'], typeName: 'User' }),
+        ]),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): returns an error that names only the @external fields of resolvable keys of the type of a contextual argument field', () => {
+      const { errors, warnings } = normalizeSubgraphFailure(
+        createSubgraph(
+          'users',
+          `
+            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+              import: ["@key", "@external", "@context", "@fromContext"])
+            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+              id: ID!
+              includeSuspended: Boolean! @external
+            }
+            type User @key(fields: "handle") @key(fields: "email", resolvable: false) {
+              handle: String! @external
+              email: String! @external
+              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+            }
+            type Profile { displayName: String! }
+          `,
+        ),
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(errors).toStrictEqual([
+        invalidDirectiveError(FROM_CONTEXT, 'User.profile(includeSuspended: ...)', FIRST_ORDINAL, [
+          contextualArgumentWithoutLocalKeyErrorMessage({ externalFieldCoords: ['User.handle'], typeName: 'User' }),
+        ]),
+      ]);
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
     test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): composes if the only key field is an @external key field of an entity extension', () => {
       const { warnings } = federateSubgraphsSuccess(
         [
@@ -2998,6 +3062,110 @@ describe('@context and @fromContext validation tests', () => {
           argumentCoords: ['User.profile(includeSuspended: ...)'],
           subgraphName: 'users',
         }),
+      ]);
+    });
+
+    test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): composes if one resolvable key of the type of a contextual argument field selects no @external field', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'accounts',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type User @key(fields: "id") @key(fields: "handle") {
+                id: ID!
+                handle: String!
+              }
+            `,
+          ),
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "handle") @key(fields: "id") {
+                id: ID!
+                handle: String! @external
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
+      ]);
+    });
+
+    test('SATISFIABILITY_ERROR (NO_POST_REQUIRE_KEY): composes if the type of a contextual argument field defines an unresolvable key with an @external field and a resolvable key without one', () => {
+      const { warnings } = federateSubgraphsSuccess(
+        [
+          createSubgraph(
+            'accounts',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type User @key(fields: "id") @key(fields: "handle") {
+                id: ID!
+                handle: String!
+              }
+            `,
+          ),
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "handle", resolvable: false) @key(fields: "id") {
+                id: ID!
+                handle: String! @external
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+            `,
+          ),
+        ],
+        ROUTER_COMPATIBILITY_VERSION_ONE,
+      );
+      expect(warnings).toStrictEqual([
+        unsupportedDirectiveWarning({ directiveName: CONTEXT, subgraphName: 'users' }),
+        unsupportedDirectiveWarning({ directiveName: FROM_CONTEXT, subgraphName: 'users' }),
       ]);
     });
   });

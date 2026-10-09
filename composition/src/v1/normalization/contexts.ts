@@ -470,7 +470,10 @@ function getContextualArgumentKeyErrorMessage(
     return contextualArgumentWithoutResolvableKeyErrorMessage(parentData.name);
   }
   const externalFieldCoords = new Set<string>();
-  for (const { documentNode } of keyFieldSetDatas.values()) {
+  for (const { documentNode, isUnresolvable } of keyFieldSetDatas.values()) {
+    if (isUnresolvable) {
+      continue;
+    }
     const keyExternalFieldCoords = new Set<string>();
     for (const definition of documentNode.definitions) {
       if (definition.kind === Kind.OPERATION_DEFINITION) {
