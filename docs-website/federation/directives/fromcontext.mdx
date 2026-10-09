@@ -6,10 +6,12 @@ description: "The @fromContext directive marks a field argument that the router 
 
 ## Minimum requirements
 
-| Package     | Minimum version                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| router      | [ROUTER_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/router%40ROUTER_MIN_VERSION)                                 |
-| composition | [COMPOSITION_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/%40wundergraph%2Fcomposition%40COMPOSITION_MIN_VERSION) |
+| Package      | Minimum version                                                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| composition  | [COMPOSITION_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/%40wundergraph%2Fcomposition%40COMPOSITION_MIN_VERSION) |
+| controlplane | [CONTROLPLANE_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/controlplane%40CONTROLPLANE_MIN_VERSION)               |
+| router       | [ROUTER_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/router%40ROUTER_MIN_VERSION)                                 |
+| wgc          | [WGC_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/wgc%40WGC_MIN_VERSION)                                          |
 
 Execution configs that contain contextual arguments use router compatibility version 2.
 Older routers refuse these configs or serve the graph without the arguments, see [Router versions](#router-versions).
@@ -30,8 +32,8 @@ scalar ContextFieldValue
 
 ## Overview
 
-`@fromContext` marks a field argument as contextual.
-A type sets a context with [`@context`](/federation/directives/context).
+`@fromContext` marks a field argument as a contextual argument.
+A type that sets a context with [`@context`](/federation/directives/context) is a setter type of the context, and an object of a setter type is a setter.
 The router fills a contextual argument with a value that it reads from an ancestor in the operation.
 
 - The value comes from the nearest ancestor object on the operation path whose type sets the context.
@@ -236,6 +238,8 @@ Every flagged user in the response carries the profile that the users subgraph r
 
 ## Resolving the value
 
+The schemas in the following sections extend the subgraphs of the [example](#example) and show only the types that they add or change.
+
 ### Nearest ancestor
 
 When several ancestors set the context, the nearest one provides the value.
@@ -299,11 +303,6 @@ When the types that set a context hold the value in different fields, the select
 # users subgraph
 union Scope @context(name: "scope") = ModerationQueue | AppealQueue | Team
 
-type ModerationQueue @key(fields: "id") {
-  id: ID!
-  includeSuspended: Boolean! @external
-}
-
 type AppealQueue @key(fields: "id") {
   id: ID!
   showSuspended: Boolean @external
@@ -359,7 +358,7 @@ A contextual argument is `null` when:
 The subgraph receives `null` in each of these cases and cannot tell them apart.
 
 The router can fail to read the selected field on the nearest setter, for example when the request that resolves it fails.
-The router then skips the contextual field for the objects below that setter and adds an error to the response.
+The router then skips the field with the contextual argument for the objects below that setter and adds an error to the response.
 
 ### Operations
 
@@ -417,8 +416,9 @@ In these rules, a setter type is a type of the subgraph that declares the contex
 - Every type condition applies to at least one setter type.
   At least one type condition applies to every setter type.
 - The selection visits no `@interfaceObject` type.
-- The type of the leaf field equals the argument type after removing every non-null wrapper.
-  List fields on the path add list wrappers, so `{ flaggedUsers { id } }` with `flaggedUsers: [User!]!` and `id: ID!` resolves to `[ID]`.
+- The argument type equals the type that a field selection, or each inline fragment, resolves to.
+  This type is the type of the leaf field with every non-null wrapper removed.
+  List fields on the path add their list wrappers, so `{ flaggedUsers { id } }` with `flaggedUsers: [User!]!` and `id: ID!` resolves to `[ID]`.
 - The selected fields follow the field sharing rules of federation.
   A selected field that another subgraph resolves is declared `@external` on an entity with a `@key`, and composition counts it as used.
 
@@ -446,7 +446,7 @@ In these rules, a setter type is a type of the subgraph that declares the contex
 ### Execution
 
 - **Requests per value**: An entity fetch of a field with contextual arguments sends one request per distinct value.
-  With several contextual arguments on one field, it sends one request per distinct combination of values.
+  When one fetch resolves several contextual arguments, on one field or on several fields of the same objects, it sends one request per distinct combination of values.
   The router sends up to 16 of these requests at a time, and each request records its own fetch span and subgraph metrics.
   A context that selects a value unique to each object, such as an ID, produces one request per setter object.
 - **Additional entity requests**: When a setter can be on the path, the router resolves a field with contextual arguments through an entity fetch on the parent objects of the field.
@@ -490,8 +490,9 @@ Upgrade in this order:
 1. Upgrade every router that serves the graph to ROUTER_MIN_VERSION or later.
 2. Publish the subgraphs that use `@context` and `@fromContext`.
 
-Graphs that already define contextual arguments receive version 2 at their first composition with composition COMPOSITION_MIN_VERSION or later.
+Graphs that already define contextual arguments receive version 2 at their first composition by controlplane CONTROLPLANE_MIN_VERSION or later.
 An unrelated change that triggers a composition is enough.
+With wgc WGC_MIN_VERSION or later, `wgc router compose` also stamps version 2.
 Removing every `@fromContext` argument from a graph and its feature flags returns its configs to version 1.
 
 ### AWS Lambda router

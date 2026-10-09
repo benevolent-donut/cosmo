@@ -6,10 +6,12 @@ description: "The @context directive declares that a type sets a named context. 
 
 ## Minimum requirements
 
-| Package     | Minimum version                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| router      | [ROUTER_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/router%40ROUTER_MIN_VERSION)                                 |
-| composition | [COMPOSITION_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/%40wundergraph%2Fcomposition%40COMPOSITION_MIN_VERSION) |
+| Package      | Minimum version                                                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| composition  | [COMPOSITION_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/%40wundergraph%2Fcomposition%40COMPOSITION_MIN_VERSION) |
+| controlplane | [CONTROLPLANE_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/controlplane%40CONTROLPLANE_MIN_VERSION)               |
+| router       | [ROUTER_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/router%40ROUTER_MIN_VERSION)                                 |
+| wgc          | [WGC_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/wgc%40WGC_MIN_VERSION)                                          |
 
 Execution configs that contain contextual arguments use router compatibility version 2.
 See [Router versions](/federation/directives/fromcontext#router-versions) for the behavior of older routers.
@@ -31,6 +33,8 @@ directive @context(name: String!) repeatable on INTERFACE | OBJECT | UNION
 `@context` declares that a type sets a context with the given name.
 A field argument declared with [`@fromContext`](/federation/directives/fromcontext) references the context and a selection on the types that set it.
 The router evaluates that selection on the nearest ancestor whose type sets the context and passes the result as the argument value.
+A type that sets a context is a setter type of the context, and an object of a setter type is a setter.
+An argument declared with `@fromContext` is a contextual argument.
 
 - A context belongs to the subgraph that declares it.
   Only `@fromContext` arguments of the same subgraph can reference it.
@@ -109,6 +113,8 @@ In `moderationQueue(id: "q1") { flaggedUsers { profile { displayName } } }`, the
 In `post(id: "p1") { author { profile { displayName } } }`, no ancestor sets `userScope`, so `profile` receives `null`.
 See [`@fromContext`](/federation/directives/fromcontext#example) for the subgraph requests.
 
+The schemas in the following sections extend the subgraphs of this example and show only the types that they add or change.
+
 ### Several types that set one context
 
 ```graphql
@@ -179,10 +185,11 @@ type User @key(fields: "id") {
 }
 ```
 
-`ModerationQueue` and `AppealQueue` implement `Queue`, so both set `queueScope`, although the users subgraph does not define them.
+`ModerationQueue` and `AppealQueue` implement `Queue` in the moderation subgraph, so both set `queueScope`.
+This includes `AppealQueue`, which only the moderation subgraph defines.
 In `queues { flaggedUsers { queueView } }`, every flagged user reads the value of its queue.
 
-A union has no fields, so a selection on a union setter uses inline fragments with type conditions.
+A union has no fields, so a selection on a union setter type uses inline fragments with type conditions.
 See [Type conditions](/federation/directives/fromcontext#type-conditions).
 
 ### The Query type
