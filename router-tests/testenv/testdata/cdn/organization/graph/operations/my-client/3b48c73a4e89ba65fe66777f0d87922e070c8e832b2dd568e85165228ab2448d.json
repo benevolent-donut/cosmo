@@ -1,0 +1,4 @@
+{
+  "version": 1,
+  "body": "query FlaggedUserProfiles { moderationQueue(id: \"q1\") { flaggedUsers { id profile(includeSuspended: false) { includeSuspended } } } }"
+}
