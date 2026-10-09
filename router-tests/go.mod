@@ -211,3 +211,5 @@ replace (
 	github.com/wundergraph/cosmo/speedtrap => ../speedtrap
 // github.com/wundergraph/graphql-go-tools/v2 => ../../graphql-go-tools/v2
 )
+
+replace github.com/wundergraph/graphql-go-tools/v2 => github.com/benevolent-donut/graphql-go-tools/v2 v2.0.1-0.20261009165321-1122368bf521
