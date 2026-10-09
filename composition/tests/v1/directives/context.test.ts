@@ -8,12 +8,17 @@ import {
   schemaToSortedNormalizedString,
 } from '../../utils/utils';
 import {
+  contextualArgumentWithoutResolvableKeyErrorMessage,
+  FIRST_ORDINAL,
+  FROM_CONTEXT,
   requiredContextArgumentError,
   type ImplementationErrors,
+  invalidDirectiveError,
   type InvalidFieldImplementation,
   invalidInterfaceImplementationError,
   OBJECT,
   ROUTER_COMPATIBILITY_VERSION_ONE,
+  subgraphValidationError,
 } from '../../../src';
 import {
   CONTEXT_DIRECTIVE,
@@ -165,7 +170,8 @@ describe('@context and @fromContext directives', () => {
             profile: Profile!
           }
 
-          type Profile {
+          type Profile @key(fields: "id") {
+            id: ID!
             greeting(
               locale: String
                 @fromContext(field: "$accountContext ... on User { locale } ... on Organisation { defaultLocale }")
@@ -182,6 +188,8 @@ describe('@context and @fromContext directives', () => {
 
           ${FROM_CONTEXT_DIRECTIVE}
 
+          ${KEY_DIRECTIVE}
+
           union Account @context(name: "accountContext") = Organisation | User
 
           ${CONTEXT_FIELD_VALUE_SCALAR}
@@ -192,8 +200,9 @@ describe('@context and @fromContext directives', () => {
             profile: Profile!
           }
 
-          type Profile {
+          type Profile @key(fields: "id") {
             greeting(locale: String @fromContext(field: "$accountContext ... on User { locale } ... on Organisation { defaultLocale }")): String!
+            id: ID!
           }
 
           type Query {
@@ -205,6 +214,8 @@ describe('@context and @fromContext directives', () => {
             locale: String!
             profile: Profile!
           }
+
+          ${OPENFED_FIELD_SET}
         `),
       );
     });
@@ -264,7 +275,8 @@ describe('@context and @fromContext directives', () => {
             profile: Profile!
           }
 
-          type Profile {
+          type Profile @key(fields: "id") {
+            id: ID!
             greeting(
               locale: String @fromContext(field: "$userContext { locale }")
               tier: String @fromContext(field: "$userContext { tier }")
@@ -281,10 +293,13 @@ describe('@context and @fromContext directives', () => {
 
           ${FROM_CONTEXT_DIRECTIVE}
 
+          ${KEY_DIRECTIVE}
+
           ${CONTEXT_FIELD_VALUE_SCALAR}
 
-          type Profile {
+          type Profile @key(fields: "id") {
             greeting(locale: String @fromContext(field: "$userContext { locale }"), tier: String @fromContext(field: "$userContext { tier }")): String!
+            id: ID!
           }
 
           type Query {
@@ -297,6 +312,8 @@ describe('@context and @fromContext directives', () => {
             profile: Profile!
             tier: String!
           }
+
+          ${OPENFED_FIELD_SET}
         `),
       );
     });
@@ -481,7 +498,8 @@ describe('@context and @fromContext directives', () => {
             profile: Profile!
           }
 
-          type Profile {
+          type Profile @key(fields: "id") {
+            id: ID!
             greeting(locale: String @fromContext(field: "$userContext { locale }")): String!
           }
         `,
@@ -493,6 +511,7 @@ describe('@context and @fromContext directives', () => {
 
           type Profile {
             greeting: String!
+            id: ID!
           }
 
           type Query {
@@ -736,32 +755,37 @@ describe('@context and @fromContext directives', () => {
       const { errors } = federateSubgraphsFailure([subgraph], ROUTER_COMPATIBILITY_VERSION_ONE);
       expect(errors).toHaveLength(1);
       expect(errors[0]).toStrictEqual(
-        invalidInterfaceImplementationError(
-          'Profile',
-          OBJECT,
-          new Map<string, ImplementationErrors>([
-            [
-              'Node',
-              {
-                invalidFieldImplementations: new Map<string, InvalidFieldImplementation>([
-                  [
-                    'greeting',
-                    {
-                      implementationContextCoords: new Set<string>(['Profile.greeting(locale: ...)']),
-                      interfaceContextCoords: new Set<string>(['Node.greeting(locale: ...)']),
-                      invalidAdditionalArguments: new Set<string>(),
-                      invalidImplementedArguments: [],
-                      isInaccessible: false,
-                      originalResponseType: 'String!',
-                      unimplementedArguments: new Set<string>(),
-                    },
-                  ],
-                ]),
-                unimplementedFields: [],
-              },
-            ],
+        subgraphValidationError('subgraph-context-interface-implementation', [
+          invalidInterfaceImplementationError(
+            'Profile',
+            OBJECT,
+            new Map<string, ImplementationErrors>([
+              [
+                'Node',
+                {
+                  invalidFieldImplementations: new Map<string, InvalidFieldImplementation>([
+                    [
+                      'greeting',
+                      {
+                        implementationContextCoords: new Set<string>(['Profile.greeting(locale: ...)']),
+                        interfaceContextCoords: new Set<string>(['Node.greeting(locale: ...)']),
+                        invalidAdditionalArguments: new Set<string>(),
+                        invalidImplementedArguments: [],
+                        isInaccessible: false,
+                        originalResponseType: 'String!',
+                        unimplementedArguments: new Set<string>(),
+                      },
+                    ],
+                  ]),
+                  unimplementedFields: [],
+                },
+              ],
+            ]),
+          ),
+          invalidDirectiveError(FROM_CONTEXT, 'Profile.greeting(locale: ...)', FIRST_ORDINAL, [
+            contextualArgumentWithoutResolvableKeyErrorMessage('Profile'),
           ]),
-        ),
+        ]),
       );
     });
 
@@ -791,32 +815,37 @@ describe('@context and @fromContext directives', () => {
       const { errors } = federateSubgraphsFailure([subgraph], ROUTER_COMPATIBILITY_VERSION_ONE);
       expect(errors).toHaveLength(1);
       expect(errors[0]).toStrictEqual(
-        invalidInterfaceImplementationError(
-          'Profile',
-          OBJECT,
-          new Map<string, ImplementationErrors>([
-            [
-              'Node',
-              {
-                invalidFieldImplementations: new Map<string, InvalidFieldImplementation>([
-                  [
-                    'greeting',
-                    {
-                      implementationContextCoords: new Set<string>(['Profile.greeting(locale: ...)']),
-                      interfaceContextCoords: new Set<string>(),
-                      invalidAdditionalArguments: new Set<string>(),
-                      invalidImplementedArguments: [],
-                      isInaccessible: false,
-                      originalResponseType: 'String!',
-                      unimplementedArguments: new Set<string>(),
-                    },
-                  ],
-                ]),
-                unimplementedFields: [],
-              },
-            ],
+        subgraphValidationError('subgraph-context-implementation-only', [
+          invalidInterfaceImplementationError(
+            'Profile',
+            OBJECT,
+            new Map<string, ImplementationErrors>([
+              [
+                'Node',
+                {
+                  invalidFieldImplementations: new Map<string, InvalidFieldImplementation>([
+                    [
+                      'greeting',
+                      {
+                        implementationContextCoords: new Set<string>(['Profile.greeting(locale: ...)']),
+                        interfaceContextCoords: new Set<string>(),
+                        invalidAdditionalArguments: new Set<string>(),
+                        invalidImplementedArguments: [],
+                        isInaccessible: false,
+                        originalResponseType: 'String!',
+                        unimplementedArguments: new Set<string>(),
+                      },
+                    ],
+                  ]),
+                  unimplementedFields: [],
+                },
+              ],
+            ]),
+          ),
+          invalidDirectiveError(FROM_CONTEXT, 'Profile.greeting(locale: ...)', FIRST_ORDINAL, [
+            contextualArgumentWithoutResolvableKeyErrorMessage('Profile'),
           ]),
-        ),
+        ]),
       );
     });
 
@@ -846,32 +875,34 @@ describe('@context and @fromContext directives', () => {
       const { errors } = federateSubgraphsFailure([subgraph], ROUTER_COMPATIBILITY_VERSION_ONE);
       expect(errors).toHaveLength(1);
       expect(errors[0]).toStrictEqual(
-        invalidInterfaceImplementationError(
-          'Profile',
-          OBJECT,
-          new Map<string, ImplementationErrors>([
-            [
-              'Node',
-              {
-                invalidFieldImplementations: new Map<string, InvalidFieldImplementation>([
-                  [
-                    'greeting',
-                    {
-                      implementationContextCoords: new Set<string>(),
-                      interfaceContextCoords: new Set<string>(['Node.greeting(locale: ...)']),
-                      invalidAdditionalArguments: new Set<string>(),
-                      invalidImplementedArguments: [],
-                      isInaccessible: false,
-                      originalResponseType: 'String!',
-                      unimplementedArguments: new Set<string>(),
-                    },
-                  ],
-                ]),
-                unimplementedFields: [],
-              },
-            ],
-          ]),
-        ),
+        subgraphValidationError('subgraph-context-interface-only', [
+          invalidInterfaceImplementationError(
+            'Profile',
+            OBJECT,
+            new Map<string, ImplementationErrors>([
+              [
+                'Node',
+                {
+                  invalidFieldImplementations: new Map<string, InvalidFieldImplementation>([
+                    [
+                      'greeting',
+                      {
+                        implementationContextCoords: new Set<string>(),
+                        interfaceContextCoords: new Set<string>(['Node.greeting(locale: ...)']),
+                        invalidAdditionalArguments: new Set<string>(),
+                        invalidImplementedArguments: [],
+                        isInaccessible: false,
+                        originalResponseType: 'String!',
+                        unimplementedArguments: new Set<string>(),
+                      },
+                    ],
+                  ]),
+                  unimplementedFields: [],
+                },
+              ],
+            ]),
+          ),
+        ]),
       );
     });
 
@@ -921,14 +952,16 @@ describe('@context and @fromContext directives', () => {
       };
       expect(errors).toHaveLength(1);
       expect(errors[0]).toStrictEqual(
-        invalidInterfaceImplementationError(
-          'Object',
-          OBJECT,
-          new Map<string, ImplementationErrors>([
-            ['InterfaceA', implementationErrors],
-            ['InterfaceB', implementationErrors],
-          ]),
-        ),
+        subgraphValidationError('subgraph-context-argument-sibling-interfaces', [
+          invalidInterfaceImplementationError(
+            'Object',
+            OBJECT,
+            new Map<string, ImplementationErrors>([
+              ['InterfaceA', implementationErrors],
+              ['InterfaceB', implementationErrors],
+            ]),
+          ),
+        ]),
       );
     });
 
@@ -978,14 +1011,16 @@ describe('@context and @fromContext directives', () => {
       };
       expect(errors).toHaveLength(1);
       expect(errors[0]).toStrictEqual(
-        invalidInterfaceImplementationError(
-          'Object',
-          OBJECT,
-          new Map<string, ImplementationErrors>([
-            ['InterfaceA', implementationErrors],
-            ['InterfaceB', implementationErrors],
-          ]),
-        ),
+        subgraphValidationError('subgraph-context-argument-interface-hierarchy', [
+          invalidInterfaceImplementationError(
+            'Object',
+            OBJECT,
+            new Map<string, ImplementationErrors>([
+              ['InterfaceA', implementationErrors],
+              ['InterfaceB', implementationErrors],
+            ]),
+          ),
+        ]),
       );
     });
 
@@ -1035,7 +1070,8 @@ describe('@context and @fromContext directives', () => {
             profile: Profile!
           }
 
-          type Profile {
+          type Profile @key(fields: "id") {
+            id: ID!
             greeting(locale: String @fromContext(field: "$userContext { locale }")): String!
           }
         `,
@@ -1049,6 +1085,7 @@ describe('@context and @fromContext directives', () => {
 
         type Profile {
           greeting: String!
+          id: ID!
         }
 
         type Query {
@@ -1079,7 +1116,8 @@ describe('@context and @fromContext directives', () => {
             profile: Profile!
           }
 
-          type Profile {
+          type Profile @key(fields: "id") {
+            id: ID!
             greeting(locale: String @fromContext(field: "$userContext { locale }")): String!
           }
         `,
@@ -1091,6 +1129,7 @@ describe('@context and @fromContext directives', () => {
 
           type Profile {
             greeting: String!
+            id: ID!
           }
 
           type Query {

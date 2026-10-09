@@ -213,6 +213,7 @@ import {
   unsupportedDirectiveWarning,
 } from '../warnings/warnings';
 import { upsertDirectiveSchemaAndEntityDefinitions, upsertParentsAndChildren } from './walkers';
+import { validateContexts } from './contexts';
 import {
   type AuthorizationData,
   type CompositeOutputData,
@@ -238,6 +239,7 @@ import {
 import {
   areDefaultValuesCompatible,
   childMapToValueArray,
+  doesArgumentDefineFromContext,
   getParentTypeName,
   isFieldData,
   isInputNodeKind,
@@ -384,6 +386,7 @@ import {
   type CachePopulateDirectiveNode,
   type ComposeDirectiveNode,
   type ConditionalFieldSetValidationResult,
+  type ContextualArgumentData,
   type EntityCacheDirectiveNode,
   type ExtractDirectiveArgumentDataResult,
   type FieldSetData,
@@ -467,6 +470,7 @@ export class NormalizationFactory {
   concreteTypeNamesByAbstractTypeName = new Map<AbstractTypeName, Set<TypeName>>();
   conditionalFieldDataByCoords = new Map<string, ConditionalFieldData>();
   configurationDataByTypeName = new Map<TypeName, ConfigurationData>();
+  contextualArgumentDatas: Array<ContextualArgumentData> = [];
   costs: Costs = {
     fieldWeights: new Map(),
     listSizes: new Map(),
@@ -509,6 +513,7 @@ export class NormalizationFactory {
   keyFieldNamesByParentTypeName = new Map<string, Set<string>>();
   fieldCoordsByNamedTypeName = new Map<string, Set<string>>();
   operationTypeNodeByTypeName = new Map<string, OperationTypeNode>();
+  operationTypeByRootTypeName = new Map<TypeName, OperationTypeNode>();
   originalParentTypeName = '';
   originalTypeNameByRenamedTypeName = new Map<TypeName, TypeName>();
   overriddenFieldNamesByTypeNameByTargetSubgraphName = new Map<SubgraphName, Map<TypeName, Set<FieldName>>>();
@@ -2542,6 +2547,11 @@ export class NormalizationFactory {
         const handledArguments = new Set<string>();
         for (const [argumentName, interfaceArgument] of interfaceField.argumentDataByName) {
           handledArguments.add(argumentName);
+          if (doesArgumentDefineFromContext(interfaceArgument)) {
+            hasErrors = true;
+            hasNestedErrors = true;
+            invalidFieldImplementation.interfaceContextCoords.add(interfaceArgument.originalCoords);
+          }
           const containerArgument = fieldData.argumentDataByName.get(argumentName);
           // The type implementing the interface must include all arguments with no variation for that argument
           if (!containerArgument) {
@@ -2557,6 +2567,15 @@ export class NormalizationFactory {
             hasErrors = true;
             hasNestedErrors = true;
             invalidFieldImplementation.invalidImplementedArguments.push({ actualType, argumentName, expectedType });
+          }
+        }
+        if (isObjectDefinitionData(data)) {
+          for (const argumentData of fieldData.argumentDataByName.values()) {
+            if (doesArgumentDefineFromContext(argumentData)) {
+              hasErrors = true;
+              hasNestedErrors = true;
+              invalidFieldImplementation.implementationContextCoords.add(argumentData.originalCoords);
+            }
           }
         }
         // Additional arguments must be optional (nullable)
@@ -4798,6 +4817,7 @@ export class NormalizationFactory {
       if (!objectData) {
         continue;
       }
+      this.operationTypeByRootTypeName.set(operationTypeName, operationType);
       const rootNode = this.configurationDataByTypeName.get(defaultTypeName);
       if (rootNode) {
         rootNode.isRootNode = true;
@@ -4827,6 +4847,7 @@ export class NormalizationFactory {
     if (this.isSubgraphEventDrivenGraph) {
       this.validateEventDrivenSubgraph();
     }
+    this.contextualArgumentDatas = validateContexts(this);
     for (const fieldCoords of this.unvalidatedExternalFieldCoords) {
       if (this.isSubgraphVersionTwo) {
         this.errors.push(invalidExternalDirectiveError(fieldCoords));
