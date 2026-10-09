@@ -35,9 +35,9 @@ For instance, the following (reduced) router execution configuration JSON define
 }
 ```
 
-Each version of the router internally defines a threshold for the router compatibility version with which it can function. If a router execution configuration with a higher router compatibility version than the the threshold of the router is provided, the router will produce an error and will not start.
+Each version of the router internally defines the highest router compatibility version with which it can function. If a router execution configuration with a higher router compatibility version is provided, the router will produce an error and will not start.
 
-This relationship between a router compatibility version defined in a router execution configuration and the router compatibility version threshold defined in a router can be considered as a handshake between a router and its execution configuration. Proper functionality and behaviour of the router can only be guaranteed when this handshake is successful.
+This relationship between a router compatibility version defined in a router execution configuration and the highest router compatibility version defined in a router can be considered as a handshake between a router and its execution configuration. Proper functionality and behaviour of the router can only be guaranteed when this handshake is successful.
 
 ## Why are router compatibility versions necessary?
 
@@ -45,11 +45,11 @@ New router compatibility versions are not intended to be regular occurrences. Th
 
 ## How does Cosmo Cloud store different execution configurations with different router compatibility versions?
 
-In short, router execution configurations are discretely stored by their router compatibility version. A router will only retrieve and poll the execution configuration stored at the address corresponding with its router compatibility version threshold.
+In short, router execution configurations are discretely stored by their router compatibility version. Version 2 configs, which composition stamps from their content, share the address of version 1 configs, see [Router compatibility version 2](#router-compatibility-version-2). A router will only retrieve and poll the execution configuration stored at the address corresponding with its router compatibility version threshold.
 
-For instance, before upgrading your valid federated graph to router compatibility version `2`, it will have been successfully composed under version `1`. The [Cosmo CDN](/router/compliance-and-data-management#router-cdn) stores the latest router execution configuration created under router compatibility version `1` (or earlier configurations with no versions) at one address, and "versioned" configurations at different bespoke addresses.
+For instance, before upgrading your valid federated graph to a new router compatibility version, it will have been successfully composed under version `1`. The [Cosmo CDN](/router/compliance-and-data-management#router-cdn) stores the latest router execution configuration created under router compatibility version `1` (or earlier configurations with no versions) at one address, and "versioned" configurations at different bespoke addresses.
 
-The router compatibility version threshold of a router dictates from where that router will receive and poll its execution configuration. So, a router with a threshold of `<=1`will receive and poll its execution config from the original storage address, and a router with a threshold of `2` will receive and poll its execution config from the corresponding version address.
+The router compatibility version threshold of a router dictates from where that router will receive and poll its execution configuration. So, a router with a threshold of `<=1`will receive and poll its execution config from the original storage address, and a router with a higher threshold will receive and poll its execution config from the corresponding version address.
 
 Please see wgc federated-graph version set for full details.
 
@@ -65,7 +65,7 @@ Version 2 configs are therefore stored at the same address as version 1 configs.
 [`wgc router compatibility-version list`](/cli/router/compatibility-version/list) lists the versions available for the graph setting, which do not include version 2.
 
 Routers ROUTER_MIN_VERSION and later keep the threshold `1` for the storage address and accept execution configs up to version 2.
-Routers from 0.167.0 to the release before ROUTER_MIN_VERSION refuse version 2 configs, because version 2 is above their threshold.
+Routers from 0.167.0 to the release before ROUTER_MIN_VERSION accept execution configs up to version 1 and refuse version 2 configs.
 Most routers before 0.167.0 and the AWS Lambda router serve the graph without the arguments, see [Router versions](/federation/directives/fromcontext#router-versions).
 The router checks the version of the base config only.
 A feature flag with contextual arguments raises the base config to version 2, except with split-config loading from the control plane, see [Feature flags with split-config loading](/federation/directives/fromcontext#feature-flags-with-split-config-loading).
