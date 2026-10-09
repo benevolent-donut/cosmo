@@ -33,7 +33,7 @@ import {
   isTypeValidImplementation,
 } from '../../schema-building/utils';
 import { getTypeNodeNamedTypeName } from '../../schema-building/ast';
-import { isObjectDefinitionData } from '../utils/utils';
+import { isObjectDefinitionData, isUnionDefinitionData } from '../utils/utils';
 import { BASE_SCALARS } from '../constants/constants';
 import { isArgumentValueValid } from '../../validation/validation';
 import { safeParse } from '../../ast/utils';
@@ -86,13 +86,14 @@ import {
   INTERFACE_OBJECT,
   LITERAL_PERIOD,
   NAME,
+  PARENT_DEFINITION_DATA,
   SCALAR,
   STREAM,
   STRING_SCALAR,
   TYPENAME,
 } from '../../utils/string-constants';
-import { getValueOrDefault, kindToNodeType, numberToOrdinal } from '../../utils/utils';
-import { type ArgumentName, type DirectiveName, type TypeName } from '../../types/types';
+import { getOrThrowError, getValueOrDefault, kindToNodeType, numberToOrdinal } from '../../utils/utils';
+import { type ArgumentName, type DirectiveName, type FieldName, type TypeName } from '../../types/types';
 
 type ContextReference = {
   contextName: string;
@@ -182,8 +183,7 @@ export function validateContexts(nf: NormalizationFactory): Array<ContextualArgu
 }
 
 function getParentData(nf: NormalizationFactory, typeName: TypeName): ParentDefinitionData {
-  // Only type names that were already found in the parent data are passed.
-  return nf.parentDefinitionDataByTypeName.get(typeName)!;
+  return getOrThrowError(nf.parentDefinitionDataByTypeName, typeName, PARENT_DEFINITION_DATA);
 }
 
 function getFieldFromContextApplications(nf: NormalizationFactory): Array<FromContextApplication> {
@@ -227,7 +227,7 @@ function getDirectiveDefinitionFromContextApplications(nf: NormalizationFactory)
 type AddFromContextApplicationsParams = {
   applications: Array<FromContextApplication>;
   coords: string;
-  directivesByName: Map<string, Array<ConstDirectiveNode>>;
+  directivesByName: Map<DirectiveName, Array<ConstDirectiveNode>>;
   argument?: ContextualArgument;
 };
 
@@ -331,7 +331,7 @@ function validateContextDirectives(
 ): Map<string, Set<TypeName>> {
   const setterTypeNamesByContextName = new Map<string, Set<TypeName>>();
   for (const parentData of nf.parentDefinitionDataByTypeName.values()) {
-    if (!isParentDataCompositeOutputType(parentData) && parentData.kind !== Kind.UNION_TYPE_DEFINITION) {
+    if (!isCompositeParentData(parentData)) {
       continue;
     }
     const directiveNodes = parentData.directivesByName.get(CONTEXT);
@@ -445,7 +445,7 @@ function validateFromContextApplication(
   };
 }
 
-function isInterfaceFieldImplemented(nf: NormalizationFactory, interfaceTypeName: TypeName, fieldName: string) {
+function isInterfaceFieldImplemented(nf: NormalizationFactory, interfaceTypeName: TypeName, fieldName: FieldName) {
   for (const parentData of nf.parentDefinitionDataByTypeName.values()) {
     if (
       isParentDataCompositeOutputType(parentData) &&
@@ -794,8 +794,8 @@ function getVariableName(selectionSet: SelectionSetNode): string | undefined {
   return variableName;
 }
 
-function getDirectiveName(selectionSet: SelectionSetNode): string | undefined {
-  let directiveName: string | undefined;
+function getDirectiveName(selectionSet: SelectionSetNode): DirectiveName | undefined {
+  let directiveName: DirectiveName | undefined;
   visit(selectionSet, {
     Directive(node) {
       directiveName = node.name.value;
@@ -838,7 +838,7 @@ function getFragmentSelectionErrorMessage(
 }
 
 function isCompositeParentData(data: ParentDefinitionData): boolean {
-  return isParentDataCompositeOutputType(data) || data.kind === Kind.UNION_TYPE_DEFINITION;
+  return isParentDataCompositeOutputType(data) || isUnionDefinitionData(data);
 }
 
 function getSelectionSetErrorMessage(
@@ -993,8 +993,11 @@ function resolveContextSelectionType(
   if (fieldName === TYPENAME) {
     return { kind: Kind.NAMED_TYPE, name: { kind: Kind.NAME, value: STRING_SCALAR } };
   }
-  // The selection was validated, so the field exists.
-  const fieldData = (parentData as CompositeOutputData).fieldDataByName.get(fieldName)!;
+  const fieldData = getOrThrowError(
+    (parentData as CompositeOutputData).fieldDataByName,
+    fieldName,
+    `${parentData.name}.fieldDataByFieldName`,
+  );
   if (!selection.selectionSet) {
     return getListWrappedTypeNode(fieldData.type, {
       kind: Kind.NAMED_TYPE,

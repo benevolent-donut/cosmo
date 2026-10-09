@@ -1,7 +1,7 @@
 import { Kind, type SelectionSetNode } from 'graphql';
 import { type FederationFactory } from './federation-factory';
 import { type ContextSelectionData, type ContextualArgumentData } from '../normalization/types/types';
-import { type FieldData, type InputValueData } from '../../schema-building/types/types';
+import { type FieldData, type InputValueData, type OriginalAuthorizationData } from '../../schema-building/types/types';
 import { isParentDataCompositeOutputType } from '../../schema-building/utils';
 import { isObjectDefinitionData, mergeRequiredScopesByAND } from '../utils/utils';
 import { operationTypeNodeToDefaultType, safeParse } from '../../ast/utils';
@@ -14,12 +14,7 @@ import { partiallyContextualArgumentWarning } from '../warnings/warnings';
 import { type InternalSubgraph } from '../../subgraph/types';
 import { OPERATION_TO_DEFAULT, TYPENAME } from '../../utils/string-constants';
 import { getOrThrowError } from '../../utils/utils';
-import { type SubgraphName, type TypeName } from '../../types/types';
-
-type AuthorizationRequirements = {
-  requiredScopes: Array<Set<string>>;
-  requiresAuthentication: boolean;
-};
+import { type ArgumentName, type SubgraphName, type TypeName } from '../../types/types';
 
 export function validateContextualArgumentInstances(
   ff: FederationFactory,
@@ -66,7 +61,7 @@ function getSubgraphArgumentData(
   ff: FederationFactory,
   subgraphName: SubgraphName,
   fieldData: FieldData,
-  argumentName: string,
+  argumentName: ArgumentName,
 ): InputValueData | undefined {
   const parentData = ff.internalSubgraphBySubgraphName
     .get(subgraphName)
@@ -149,7 +144,7 @@ function getContextAuthorizationErrors(
   const federatedParentTypeName = getFederatedTypeName(internalSubgraph, parentTypeName);
   const parentAuthData = ff.authorizationDataByParentTypeName.get(federatedParentTypeName);
   const fieldAuthData = parentAuthData?.fieldAuthDataByFieldName.get(fieldName)?.originalData;
-  const requirements: AuthorizationRequirements = {
+  const requirements: OriginalAuthorizationData = {
     requiredScopes: mergeRequiredScopesByAND(
       [...(fieldAuthData?.requiredScopes ?? [])],
       parentAuthData?.requiredScopes ?? [],
@@ -183,7 +178,7 @@ function getContextAuthorizationErrors(
 function getUnauthorizedDependencyCoords(
   ff: FederationFactory,
   internalSubgraph: InternalSubgraph,
-  requirements: AuthorizationRequirements,
+  requirements: OriginalAuthorizationData,
   setterTypeName: TypeName,
   selectionData: ContextSelectionData,
 ): string | undefined {
@@ -207,7 +202,7 @@ function getUnauthorizedDependencyCoords(
 
 function getUnauthorizedFieldSetCoords(
   ff: FederationFactory,
-  requirements: AuthorizationRequirements,
+  requirements: OriginalAuthorizationData,
   fieldSet: string,
   typeName: TypeName,
 ): string | undefined {
@@ -221,7 +216,7 @@ function getUnauthorizedFieldSetCoords(
 
 function getUnauthorizedSelectionSetCoords(
   ff: FederationFactory,
-  requirements: AuthorizationRequirements,
+  requirements: OriginalAuthorizationData,
   selectionSet: SelectionSetNode,
   typeName: TypeName,
 ): string | undefined {
@@ -257,8 +252,8 @@ function getUnauthorizedSelectionSetCoords(
 
 // Scopes are OR-ed sets of AND-ed scopes, so each set of the requirements must contain a set of the dependency.
 function areRequirementsSatisfied(
-  requirements: AuthorizationRequirements,
-  dependency?: AuthorizationRequirements,
+  requirements: OriginalAuthorizationData,
+  dependency?: OriginalAuthorizationData,
 ): boolean {
   if (!dependency) {
     return true;
