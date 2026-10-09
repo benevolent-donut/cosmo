@@ -164,6 +164,16 @@ func TestLoaderContextualArguments(t *testing.T) {
 		require.EqualError(t, err, "data source users is a gRPC or plugin data source and defines contextual arguments, which are supported only for GraphQL data sources")
 	})
 
+	t.Run("refuses a gRPC data source with contextual arguments and without a mapping", func(t *testing.T) {
+		t.Parallel()
+
+		engineConfig := contextualArgumentsEngineConfig()
+		engineConfig.DatasourceConfigurations[0].CustomGraphql.Grpc = &nodev1.GRPCConfiguration{}
+
+		_, err := loadContextualArgumentsConfig(t, engineConfig, false)
+		require.EqualError(t, err, "data source users is a gRPC or plugin data source and defines contextual arguments, which are supported only for GraphQL data sources")
+	})
+
 	t.Run("refuses a plugin data source with contextual arguments", func(t *testing.T) {
 		t.Parallel()
 
