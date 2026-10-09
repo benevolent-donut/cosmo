@@ -400,7 +400,10 @@ Composition reports a [composition error](/federation/composition-errors) for ev
   - fields that implement an interface field;
   - directive definitions;
   - fields on `@interfaceObject` types.
-- The object type declares at least one `@key` in the subgraph whose `resolvable` argument is `true` or omitted and whose fields are not `@external`.
+- The object type declares at least one `@key` in the subgraph that meets both conditions:
+  - its `resolvable` argument is `true` or omitted;
+  - it selects no `@external` field, nested fields included.
+    Key fields of an entity extension count as fields of the subgraph, also when they are declared `@external`.
 - Root operation types have no `@key`, so their fields cannot have contextual arguments.
 - gRPC services and router plugins cannot define contextual arguments.
 
