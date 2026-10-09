@@ -127,3 +127,11 @@ Declare at least the same requirements on the field with the contextual argument
 
 A setter type of a context that a `@fromContext` references cannot implement an Interface that any subgraph declares `@interfaceObject`.
 Set the context on a type that does not implement such an Interface.
+
+### Contextual arguments in gRPC and plugin subgraphs
+
+`The subgraph "..." is a gRPC service subgraph and defines the following argument with "@fromContext": "..."`, or the same error for a plugin subgraph.
+
+Contextual arguments are only supported in GraphQL subgraphs.
+The control plane and `wgc router compose` report this error after composition.
+Define the field with the contextual argument in a GraphQL subgraph.
