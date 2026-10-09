@@ -1,0 +1,10 @@
+type Subscription {
+  employeeUpdated(id: Int!): Employee! @edfs__natsSubscribe(subjects: ["employeeUpdated.{{ args.id }}"])
+  filteredEmployeeUpdated(id: Int!): Employee!
+    @edfs__natsSubscribe(subjects: ["employeeUpdated.{{ args.id }}"])
+    @openfed__subscriptionFilter(condition: { NOT: { IN: { fieldPath: "id", values: [2, 6] } } })
+}
+
+type Employee @key(fields: "id", resolvable: false) {
+  id: Int! @external
+}

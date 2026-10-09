@@ -1,0 +1,24 @@
+type Query {
+  employee(id: Int!): Employee @authenticated
+  employees(department: String, limit: Int = 10): [Employee!]! @requiresScopes(scopes: [["read:employee"], ["read:all"]])
+}
+
+type Mutation {
+  renameEmployee(id: Int!, name: String!): Employee @requiresScopes(scopes: [["write:employee"]])
+}
+
+interface Identifiable {
+  id: Int!
+}
+
+type Employee implements Identifiable @key(fields: "id") {
+  id: Int!
+  name(format: NameFormat = FULL): String!
+  salary: Int @requiresScopes(scopes: [["read:salary"]])
+  note: String @tag(name: "internal")
+}
+
+enum NameFormat {
+  FULL
+  SHORT
+}
