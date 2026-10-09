@@ -13,7 +13,7 @@ description: "The @fromContext directive marks a field argument that the router 
 | router       | [ROUTER_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/router%40ROUTER_MIN_VERSION)                                 |
 | wgc          | [WGC_MIN_VERSION](https://github.com/wundergraph/cosmo/releases/tag/wgc%40WGC_MIN_VERSION)                                          |
 
-Execution configs that contain contextual arguments use router compatibility version 2.
+Base execution configs that contain contextual arguments use router compatibility version 2.
 Older routers refuse these configs or serve the graph without the arguments, see [Router versions](#router-versions).
 
 ## Definition
@@ -469,8 +469,8 @@ Environment variable: `ENGINE_MAX_CONTEXTUAL_ARGUMENT_GROUPS`.
 
 ### Router versions
 
-Composition stamps every execution config that contains contextual arguments with [router compatibility version](/concepts/router-compatibility-versions) 2.
-Configs without contextual arguments keep version 1.
+Composition stamps every base execution config that contains contextual arguments with [router compatibility version](/concepts/router-compatibility-versions) 2.
+When neither a graph nor its feature flags contain contextual arguments, its configs keep version 1.
 Composition reports a warning that names the minimum router version for every subgraph that contributes contextual arguments to the config.
 
 | Router                                           | Behavior with a config that contains contextual arguments                                                                  |
@@ -512,7 +512,7 @@ These sources stamp the base config with version 2 when the base graph or any of
 
 Routers that refuse version 2 then refuse the graph with all of its feature flags.
 
-With [split-config loading](/router/configuration#split-config-poller) from the control plane, the version of the base config reflects the base graph only.
+With [split-config loading](/router/configuration#split-config-poller) from the control plane, the version of the base config reflects the base graph only, and the feature flag files keep version 1.
 When contextual arguments appear only in a feature subgraph, the base config keeps version 1.
 Routers from 0.315.0 to the release before ROUTER_MIN_VERSION then accept the graph and serve the traffic of that feature flag without contextual arguments.
 Composition still warns about the minimum router version for the feature subgraph.

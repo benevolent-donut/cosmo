@@ -55,8 +55,8 @@ Please see wgc federated-graph version set for full details.
 
 ## Router compatibility version 2
 
-Composition stamps router compatibility version 2 on every execution config that contains contextual arguments, which subgraphs declare with [`@fromContext`](/federation/directives/fromcontext).
-Every other config keeps version 1 and does not change.
+Composition stamps router compatibility version 2 on every base execution config that contains contextual arguments, which subgraphs declare with [`@fromContext`](/federation/directives/fromcontext).
+When neither a graph nor its feature flags contain contextual arguments, its configs keep version 1 and do not change.
 
 Version 2 follows from the content of a config and is not a graph setting.
 The storage addresses described above follow the graph setting, which stays `1`.
