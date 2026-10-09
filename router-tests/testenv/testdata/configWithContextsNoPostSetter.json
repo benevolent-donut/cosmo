@@ -1,0 +1,718 @@
+{
+  "engineConfig": {
+    "defaultFlushInterval": "500",
+    "datasourceConfigurations": [
+      {
+        "kind": "GRAPHQL",
+        "rootNodes": [
+          {
+            "typeName": "Query",
+            "fieldNames": [
+              "moderationQueue",
+              "moderationQueues",
+              "queueGrid",
+              "queues",
+              "scopes",
+              "organization"
+            ]
+          },
+          {
+            "typeName": "Mutation",
+            "fieldNames": [
+              "flagUser"
+            ]
+          },
+          {
+            "typeName": "Subscription",
+            "fieldNames": [
+              "queueUpdated"
+            ]
+          },
+          {
+            "typeName": "ModerationQueue",
+            "fieldNames": [
+              "id",
+              "includeSuspended",
+              "flaggedUsers",
+              "flaggedUserPages",
+              "team"
+            ]
+          },
+          {
+            "typeName": "AppealQueue",
+            "fieldNames": [
+              "id",
+              "includeSuspended",
+              "showSuspended",
+              "flaggedUsers"
+            ]
+          },
+          {
+            "typeName": "Team",
+            "fieldNames": [
+              "id",
+              "members"
+            ]
+          },
+          {
+            "typeName": "Organization",
+            "fieldNames": [
+              "id",
+              "includeSuspended",
+              "queues",
+              "members"
+            ]
+          },
+          {
+            "typeName": "User",
+            "fieldNames": [
+              "id"
+            ]
+          }
+        ],
+        "childNodes": [
+          {
+            "typeName": "Queue",
+            "fieldNames": [
+              "id",
+              "includeSuspended",
+              "flaggedUsers"
+            ]
+          }
+        ],
+        "overrideFieldPathFromAlias": true,
+        "customGraphql": {
+          "fetch": {
+            "url": {
+              "staticVariableContent": "http://localhost:4012/graphql"
+            },
+            "method": "POST",
+            "body": {},
+            "baseUrl": {},
+            "path": {}
+          },
+          "subscription": {
+            "enabled": true,
+            "url": {
+              "staticVariableContent": "http://localhost:4012/graphql"
+            },
+            "protocol": "GRAPHQL_SUBSCRIPTION_PROTOCOL_WS",
+            "websocketSubprotocol": "GRAPHQL_WEBSOCKET_SUBPROTOCOL_AUTO"
+          },
+          "federation": {
+            "enabled": true,
+            "serviceSdl": "extend schema @link(url: \"https://specs.apollo.dev/federation/v2.8\", import: [\"@key\"])\n\ntype Query {\n  moderationQueue(id: ID!): ModerationQueue\n  moderationQueues: [ModerationQueue!]!\n  queueGrid: [[ModerationQueue!]!]!\n  queues: [Queue!]!\n  scopes: [Scope!]!\n  organization(id: ID!): Organization\n}\n\ntype Mutation {\n  flagUser(queueId: ID!, userId: ID!): ModerationQueue!\n}\n\ntype Subscription {\n  queueUpdated(id: ID!): ModerationQueue!\n}\n\ninterface Queue {\n  id: ID!\n  includeSuspended: Boolean!\n  flaggedUsers: [User!]!\n}\n\ntype ModerationQueue implements Queue @key(fields: \"id\") {\n  id: ID!\n  includeSuspended: Boolean!\n  flaggedUsers: [User!]!\n  flaggedUserPages: [[User!]!]!\n  team: Team\n}\n\ntype AppealQueue implements Queue @key(fields: \"id\") {\n  id: ID!\n  includeSuspended: Boolean!\n  showSuspended: Boolean\n  flaggedUsers: [User!]!\n}\n\ntype Team @key(fields: \"id\") {\n  id: ID!\n  members: [User!]!\n}\n\nunion Scope = ModerationQueue | AppealQueue | Team\n\ntype Organization @key(fields: \"id\") {\n  id: ID!\n  includeSuspended: Boolean\n  queues: [ModerationQueue!]!\n  members: [User!]!\n}\n\ntype User @key(fields: \"id\", resolvable: false) {\n  id: ID!\n}\n"
+          },
+          "upstreamSchema": {
+            "key": "720ef77493a6d5e754a163bb0d21b8c264a2320f"
+          }
+        },
+        "requestTimeoutSeconds": "10",
+        "id": "0",
+        "keys": [
+          {
+            "typeName": "ModerationQueue",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "AppealQueue",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "Team",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "Organization",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "User",
+            "selectionSet": "id",
+            "disableEntityResolver": true
+          }
+        ]
+      },
+      {
+        "kind": "GRAPHQL",
+        "rootNodes": [
+          {
+            "typeName": "Query",
+            "fieldNames": [
+              "post"
+            ]
+          },
+          {
+            "typeName": "Post",
+            "fieldNames": [
+              "id",
+              "author",
+              "includeSuspended"
+            ]
+          },
+          {
+            "typeName": "ModerationQueue",
+            "fieldNames": [
+              "id",
+              "policyLevel"
+            ],
+            "externalFieldNames": [
+              "includeSuspended"
+            ]
+          },
+          {
+            "typeName": "User",
+            "fieldNames": [
+              "id",
+              "handle"
+            ]
+          }
+        ],
+        "overrideFieldPathFromAlias": true,
+        "customGraphql": {
+          "fetch": {
+            "url": {
+              "staticVariableContent": "http://localhost:4013/graphql"
+            },
+            "method": "POST",
+            "body": {},
+            "baseUrl": {},
+            "path": {}
+          },
+          "subscription": {
+            "enabled": true,
+            "url": {
+              "staticVariableContent": "http://localhost:4013/graphql"
+            },
+            "protocol": "GRAPHQL_SUBSCRIPTION_PROTOCOL_WS",
+            "websocketSubprotocol": "GRAPHQL_WEBSOCKET_SUBPROTOCOL_AUTO"
+          },
+          "federation": {
+            "enabled": true,
+            "serviceSdl": "extend schema @link(url: \"https://specs.apollo.dev/federation/v2.8\", import: [\"@key\", \"@external\", \"@requires\"])\n\ntype Query {\n  post(id: ID!): Post\n}\n\ntype Post @key(fields: \"id\") {\n  id: ID!\n  author: User!\n  includeSuspended: Boolean\n}\n\ntype ModerationQueue @key(fields: \"id\") {\n  id: ID!\n  includeSuspended: Boolean! @external\n  policyLevel: Int @requires(fields: \"includeSuspended\")\n}\n\ntype User @key(fields: \"id\") {\n  id: ID!\n  handle: String\n}\n"
+          },
+          "upstreamSchema": {
+            "key": "7af6dc64dc47936086495f850484a30364c9abaa"
+          }
+        },
+        "requestTimeoutSeconds": "10",
+        "id": "1",
+        "keys": [
+          {
+            "typeName": "Post",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "ModerationQueue",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "User",
+            "selectionSet": "id"
+          }
+        ],
+        "requires": [
+          {
+            "typeName": "ModerationQueue",
+            "fieldName": "policyLevel",
+            "selectionSet": "includeSuspended"
+          }
+        ]
+      },
+      {
+        "kind": "GRAPHQL",
+        "rootNodes": [
+          {
+            "typeName": "Query",
+            "fieldNames": [
+              "viewerIncludeSuspended"
+            ]
+          },
+          {
+            "typeName": "ModerationQueue",
+            "fieldNames": [
+              "id",
+              "summary"
+            ],
+            "externalFieldNames": [
+              "includeSuspended",
+              "policyLevel",
+              "flaggedUsers",
+              "team"
+            ]
+          },
+          {
+            "typeName": "Organization",
+            "fieldNames": [
+              "id"
+            ],
+            "externalFieldNames": [
+              "includeSuspended"
+            ]
+          },
+          {
+            "typeName": "AppealQueue",
+            "fieldNames": [
+              "id"
+            ],
+            "externalFieldNames": [
+              "showSuspended"
+            ]
+          },
+          {
+            "typeName": "Team",
+            "fieldNames": [
+              "id"
+            ]
+          },
+          {
+            "typeName": "User",
+            "fieldNames": [
+              "id",
+              "friends",
+              "profile",
+              "badge",
+              "peers",
+              "teamView",
+              "queueView",
+              "scopeView",
+              "viewerView",
+              "digest",
+              "signature"
+            ],
+            "externalFieldNames": [
+              "handle"
+            ]
+          }
+        ],
+        "childNodes": [
+          {
+            "typeName": "Queue",
+            "fieldNames": [
+              "id",
+              "includeSuspended"
+            ]
+          },
+          {
+            "typeName": "Profile",
+            "fieldNames": [
+              "displayName",
+              "includeSuspended"
+            ]
+          }
+        ],
+        "overrideFieldPathFromAlias": true,
+        "customGraphql": {
+          "fetch": {
+            "url": {
+              "staticVariableContent": "http://localhost:4014/graphql"
+            },
+            "method": "POST",
+            "body": {},
+            "baseUrl": {},
+            "path": {}
+          },
+          "subscription": {
+            "enabled": true,
+            "url": {
+              "staticVariableContent": "http://localhost:4014/graphql"
+            },
+            "protocol": "GRAPHQL_SUBSCRIPTION_PROTOCOL_WS",
+            "websocketSubprotocol": "GRAPHQL_WEBSOCKET_SUBPROTOCOL_AUTO"
+          },
+          "federation": {
+            "enabled": true,
+            "serviceSdl": "extend schema @link(url: \"https://specs.apollo.dev/federation/v2.8\", import: [\"@key\", \"@external\", \"@requires\", \"@context\", \"@fromContext\"])\n\ndirective @context(name: String!) repeatable on INTERFACE | OBJECT | UNION\ndirective @fromContext(field: ContextFieldValue) on ARGUMENT_DEFINITION\nscalar ContextFieldValue\n\ntype Query @context(name: \"viewer\") {\n  viewerIncludeSuspended: Boolean\n}\n\ntype ModerationQueue @key(fields: \"id\") @context(name: \"userScope\") @context(name: \"policyScope\") @context(name: \"peerScope\") @context(name: \"teamScope\") {\n  id: ID!\n  includeSuspended: Boolean! @external\n  policyLevel: Int @external\n  flaggedUsers: [User!]! @external\n  team: Team @external\n  summary(includeSuspended: Boolean @fromContext(field: \"$userScope { includeSuspended }\")): String\n}\n\ntype Organization @key(fields: \"id\") @context(name: \"userScope\") {\n  id: ID!\n  includeSuspended: Boolean @external\n}\n\ninterface Queue @context(name: \"queueScope\") {\n  id: ID!\n  includeSuspended: Boolean!\n}\n\ntype AppealQueue @key(fields: \"id\") {\n  id: ID!\n  showSuspended: Boolean @external\n}\n\ntype Team @key(fields: \"id\") {\n  id: ID!\n}\n\nunion Scope @context(name: \"scope\") = ModerationQueue | AppealQueue | Team\n\ntype User @key(fields: \"id\") {\n  id: ID!\n  handle: String @external\n  friends: [User!]!\n  profile(includeSuspended: Boolean @fromContext(field: \"$userScope { includeSuspended }\")): Profile\n  badge(level: Int @fromContext(field: \"$policyScope { policyLevel }\")): String\n  peers(ids: [ID] @fromContext(field: \"$peerScope { flaggedUsers { id } }\")): String\n  teamView(teamId: ID @fromContext(field: \"$teamScope { team { id } }\")): String\n  queueView(includeSuspended: Boolean @fromContext(field: \"$queueScope { includeSuspended }\")): String\n  scopeView(show: Boolean @fromContext(field: \"$scope ... on ModerationQueue { includeSuspended } ... on AppealQueue { showSuspended }\")): String\n  viewerView(includeSuspended: Boolean @fromContext(field: \"$viewer { viewerIncludeSuspended }\")): String\n  digest(locale: String, includeSuspended: Boolean @fromContext(field: \"$userScope { includeSuspended }\"), level: Int @fromContext(field: \"$policyScope { policyLevel }\")): String\n  signature(includeSuspended: Boolean @fromContext(field: \"$userScope { includeSuspended }\")): String @requires(fields: \"handle\")\n}\n\ntype Profile {\n  displayName: String!\n  includeSuspended: Boolean\n}\n"
+          },
+          "upstreamSchema": {
+            "key": "c8ee18f0610c863074427604ada701a0f31d7d0b"
+          }
+        },
+        "requestTimeoutSeconds": "10",
+        "id": "2",
+        "keys": [
+          {
+            "typeName": "ModerationQueue",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "Organization",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "AppealQueue",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "Team",
+            "selectionSet": "id"
+          },
+          {
+            "typeName": "User",
+            "selectionSet": "id"
+          }
+        ],
+        "requires": [
+          {
+            "typeName": "User",
+            "fieldName": "signature",
+            "selectionSet": "handle"
+          }
+        ],
+        "contextualArgumentConfiguration": {
+          "arguments": [
+            {
+              "typeName": "ModerationQueue",
+              "fieldName": "summary",
+              "argumentName": "includeSuspended",
+              "contextName": "userScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "includeSuspended"
+                },
+                {
+                  "typeName": "Organization",
+                  "selectionSet": "includeSuspended"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "profile",
+              "argumentName": "includeSuspended",
+              "contextName": "userScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "includeSuspended"
+                },
+                {
+                  "typeName": "Organization",
+                  "selectionSet": "includeSuspended"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "badge",
+              "argumentName": "level",
+              "contextName": "policyScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "policyLevel"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "peers",
+              "argumentName": "ids",
+              "contextName": "peerScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "flaggedUsers { id }"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "teamView",
+              "argumentName": "teamId",
+              "contextName": "teamScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "team { id }"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "queueView",
+              "argumentName": "includeSuspended",
+              "contextName": "queueScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "includeSuspended"
+                },
+                {
+                  "typeName": "AppealQueue",
+                  "selectionSet": "includeSuspended"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "scopeView",
+              "argumentName": "show",
+              "contextName": "scope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "includeSuspended"
+                },
+                {
+                  "typeName": "AppealQueue",
+                  "selectionSet": "showSuspended"
+                },
+                {
+                  "typeName": "Team"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "viewerView",
+              "argumentName": "includeSuspended",
+              "contextName": "viewer",
+              "setters": [
+                {
+                  "typeName": "Query",
+                  "selectionSet": "viewerIncludeSuspended"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "digest",
+              "argumentName": "includeSuspended",
+              "contextName": "userScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "includeSuspended"
+                },
+                {
+                  "typeName": "Organization",
+                  "selectionSet": "includeSuspended"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "digest",
+              "argumentName": "level",
+              "contextName": "policyScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "policyLevel"
+                }
+              ]
+            },
+            {
+              "typeName": "User",
+              "fieldName": "signature",
+              "argumentName": "includeSuspended",
+              "contextName": "userScope",
+              "setters": [
+                {
+                  "typeName": "ModerationQueue",
+                  "selectionSet": "includeSuspended"
+                },
+                {
+                  "typeName": "Organization",
+                  "selectionSet": "includeSuspended"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "fieldConfigurations": [
+      {
+        "typeName": "Query",
+        "fieldName": "moderationQueue",
+        "argumentsConfiguration": [
+          {
+            "name": "id",
+            "sourceType": "FIELD_ARGUMENT"
+          }
+        ]
+      },
+      {
+        "typeName": "Query",
+        "fieldName": "organization",
+        "argumentsConfiguration": [
+          {
+            "name": "id",
+            "sourceType": "FIELD_ARGUMENT"
+          }
+        ]
+      },
+      {
+        "typeName": "Query",
+        "fieldName": "post",
+        "argumentsConfiguration": [
+          {
+            "name": "id",
+            "sourceType": "FIELD_ARGUMENT"
+          }
+        ]
+      },
+      {
+        "typeName": "Mutation",
+        "fieldName": "flagUser",
+        "argumentsConfiguration": [
+          {
+            "name": "queueId",
+            "sourceType": "FIELD_ARGUMENT"
+          },
+          {
+            "name": "userId",
+            "sourceType": "FIELD_ARGUMENT"
+          }
+        ]
+      },
+      {
+        "typeName": "Subscription",
+        "fieldName": "queueUpdated",
+        "argumentsConfiguration": [
+          {
+            "name": "id",
+            "sourceType": "FIELD_ARGUMENT"
+          }
+        ]
+      },
+      {
+        "typeName": "ModerationQueue",
+        "fieldName": "summary",
+        "argumentsConfiguration": [
+          {
+            "name": "includeSuspended",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "profile",
+        "argumentsConfiguration": [
+          {
+            "name": "includeSuspended",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "badge",
+        "argumentsConfiguration": [
+          {
+            "name": "level",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "peers",
+        "argumentsConfiguration": [
+          {
+            "name": "ids",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "teamView",
+        "argumentsConfiguration": [
+          {
+            "name": "teamId",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "queueView",
+        "argumentsConfiguration": [
+          {
+            "name": "includeSuspended",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "scopeView",
+        "argumentsConfiguration": [
+          {
+            "name": "show",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "viewerView",
+        "argumentsConfiguration": [
+          {
+            "name": "includeSuspended",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "digest",
+        "argumentsConfiguration": [
+          {
+            "name": "locale",
+            "sourceType": "FIELD_ARGUMENT"
+          },
+          {
+            "name": "includeSuspended",
+            "sourceType": "FROM_CONTEXT"
+          },
+          {
+            "name": "level",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      },
+      {
+        "typeName": "User",
+        "fieldName": "signature",
+        "argumentsConfiguration": [
+          {
+            "name": "includeSuspended",
+            "sourceType": "FROM_CONTEXT"
+          }
+        ]
+      }
+    ],
+    "graphqlSchema": "schema {\n  query: Query\n  mutation: Mutation\n  subscription: Subscription\n}\n\ntype Query {\n  moderationQueue(id: ID!): ModerationQueue\n  moderationQueues: [ModerationQueue!]!\n  queueGrid: [[ModerationQueue!]!]!\n  queues: [Queue!]!\n  scopes: [Scope!]!\n  organization(id: ID!): Organization\n  post(id: ID!): Post\n  viewerIncludeSuspended: Boolean\n}\n\ntype Mutation {\n  flagUser(queueId: ID!, userId: ID!): ModerationQueue!\n}\n\ntype Subscription {\n  queueUpdated(id: ID!): ModerationQueue!\n}\n\ninterface Queue {\n  id: ID!\n  includeSuspended: Boolean!\n  flaggedUsers: [User!]!\n}\n\ntype Team {\n  id: ID!\n  members: [User!]!\n}\n\nunion Scope = ModerationQueue | AppealQueue | Team\n\ntype Organization {\n  id: ID!\n  includeSuspended: Boolean\n  queues: [ModerationQueue!]!\n  members: [User!]!\n}\n\ntype User {\n  id: ID!\n  handle: String\n  friends: [User!]!\n  profile: Profile\n  badge: String\n  peers: String\n  teamView: String\n  queueView: String\n  scopeView: String\n  viewerView: String\n  digest(locale: String): String\n  signature: String\n}\n\ntype Post {\n  id: ID!\n  author: User!\n  includeSuspended: Boolean\n}\n\ntype Profile {\n  displayName: String!\n  includeSuspended: Boolean\n}\n\ntype ModerationQueue implements Queue {\n  id: ID!\n  includeSuspended: Boolean!\n  flaggedUsers: [User!]!\n  flaggedUserPages: [[User!]!]!\n  team: Team\n  policyLevel: Int\n  summary: String\n}\n\ntype AppealQueue implements Queue {\n  id: ID!\n  includeSuspended: Boolean!\n  showSuspended: Boolean\n  flaggedUsers: [User!]!\n}",
+    "stringStorage": {
+      "720ef77493a6d5e754a163bb0d21b8c264a2320f": "schema {\n  query: Query\n  mutation: Mutation\n  subscription: Subscription\n}\n\ndirective @key(fields: openfed__FieldSet!, resolvable: Boolean = true) repeatable on INTERFACE | OBJECT\n\ndirective @link(as: String, for: link__Purpose, import: [link__Import], url: String!) repeatable on SCHEMA\n\ntype AppealQueue implements Queue @key(fields: \"id\") {\n  flaggedUsers: [User!]!\n  id: ID!\n  includeSuspended: Boolean!\n  showSuspended: Boolean\n}\n\ntype ModerationQueue implements Queue @key(fields: \"id\") {\n  flaggedUserPages: [[User!]!]!\n  flaggedUsers: [User!]!\n  id: ID!\n  includeSuspended: Boolean!\n  team: Team\n}\n\ntype Mutation {\n  flagUser(queueId: ID!, userId: ID!): ModerationQueue!\n}\n\ntype Organization @key(fields: \"id\") {\n  id: ID!\n  includeSuspended: Boolean\n  members: [User!]!\n  queues: [ModerationQueue!]!\n}\n\ntype Query {\n  moderationQueue(id: ID!): ModerationQueue\n  moderationQueues: [ModerationQueue!]!\n  organization(id: ID!): Organization\n  queueGrid: [[ModerationQueue!]!]!\n  queues: [Queue!]!\n  scopes: [Scope!]!\n}\n\ninterface Queue {\n  flaggedUsers: [User!]!\n  id: ID!\n  includeSuspended: Boolean!\n}\n\nunion Scope = AppealQueue | ModerationQueue | Team\n\ntype Subscription {\n  queueUpdated(id: ID!): ModerationQueue!\n}\n\ntype Team @key(fields: \"id\") {\n  id: ID!\n  members: [User!]!\n}\n\ntype User @key(fields: \"id\", resolvable: false) {\n  id: ID!\n}\n\nscalar link__Import\n\nenum link__Purpose {\n  EXECUTION\n  SECURITY\n}\n\nscalar openfed__FieldSet",
+      "7af6dc64dc47936086495f850484a30364c9abaa": "schema {\n  query: Query\n}\n\ndirective @external on FIELD_DEFINITION | OBJECT\n\ndirective @key(fields: openfed__FieldSet!, resolvable: Boolean = true) repeatable on INTERFACE | OBJECT\n\ndirective @link(as: String, for: link__Purpose, import: [link__Import], url: String!) repeatable on SCHEMA\n\ndirective @requires(fields: openfed__FieldSet!) on FIELD_DEFINITION\n\ntype ModerationQueue @key(fields: \"id\") {\n  id: ID!\n  includeSuspended: Boolean! @external\n  policyLevel: Int @requires(fields: \"includeSuspended\")\n}\n\ntype Post @key(fields: \"id\") {\n  author: User!\n  id: ID!\n  includeSuspended: Boolean\n}\n\ntype Query {\n  post(id: ID!): Post\n}\n\ntype User @key(fields: \"id\") {\n  handle: String\n  id: ID!\n}\n\nscalar link__Import\n\nenum link__Purpose {\n  EXECUTION\n  SECURITY\n}\n\nscalar openfed__FieldSet",
+      "c8ee18f0610c863074427604ada701a0f31d7d0b": "schema {\n  query: Query\n}\n\ndirective @context(name: String!) repeatable on INTERFACE | OBJECT | UNION\n\ndirective @external on FIELD_DEFINITION | OBJECT\n\ndirective @fromContext(field: ContextFieldValue) on ARGUMENT_DEFINITION\n\ndirective @key(fields: openfed__FieldSet!, resolvable: Boolean = true) repeatable on INTERFACE | OBJECT\n\ndirective @link(as: String, for: link__Purpose, import: [link__Import], url: String!) repeatable on SCHEMA\n\ndirective @requires(fields: openfed__FieldSet!) on FIELD_DEFINITION\n\ntype AppealQueue @key(fields: \"id\") {\n  id: ID!\n  showSuspended: Boolean @external\n}\n\nscalar ContextFieldValue\n\ntype ModerationQueue @key(fields: \"id\") @context(name: \"userScope\") @context(name: \"policyScope\") @context(name: \"peerScope\") @context(name: \"teamScope\") {\n  flaggedUsers: [User!]! @external\n  id: ID!\n  includeSuspended: Boolean! @external\n  policyLevel: Int @external\n  summary(includeSuspended: Boolean @fromContext(field: \"$userScope { includeSuspended }\")): String\n  team: Team @external\n}\n\ntype Organization @key(fields: \"id\") @context(name: \"userScope\") {\n  id: ID!\n  includeSuspended: Boolean @external\n}\n\ntype Profile {\n  displayName: String!\n  includeSuspended: Boolean\n}\n\ntype Query @context(name: \"viewer\") {\n  viewerIncludeSuspended: Boolean\n}\n\ninterface Queue @context(name: \"queueScope\") {\n  id: ID!\n  includeSuspended: Boolean!\n}\n\nunion Scope @context(name: \"scope\") = AppealQueue | ModerationQueue | Team\n\ntype Team @key(fields: \"id\") {\n  id: ID!\n}\n\ntype User @key(fields: \"id\") {\n  badge(level: Int @fromContext(field: \"$policyScope { policyLevel }\")): String\n  digest(includeSuspended: Boolean @fromContext(field: \"$userScope { includeSuspended }\"), level: Int @fromContext(field: \"$policyScope { policyLevel }\"), locale: String): String\n  friends: [User!]!\n  handle: String @external\n  id: ID!\n  peers(ids: [ID] @fromContext(field: \"$peerScope { flaggedUsers { id } }\")): String\n  profile(includeSuspended: Boolean @fromContext(field: \"$userScope { includeSuspended }\")): Profile\n  queueView(includeSuspended: Boolean @fromContext(field: \"$queueScope { includeSuspended }\")): String\n  scopeView(show: Boolean @fromContext(field: \"$scope ... on ModerationQueue { includeSuspended } ... on AppealQueue { showSuspended }\")): String\n  signature(includeSuspended: Boolean @fromContext(field: \"$userScope { includeSuspended }\")): String @requires(fields: \"handle\")\n  teamView(teamId: ID @fromContext(field: \"$teamScope { team { id } }\")): String\n  viewerView(includeSuspended: Boolean @fromContext(field: \"$viewer { viewerIncludeSuspended }\")): String\n}\n\nscalar link__Import\n\nenum link__Purpose {\n  EXECUTION\n  SECURITY\n}\n\nscalar openfed__FieldSet"
+    }
+  },
+  "version": "00000000-0000-0000-0000-000000000000",
+  "subgraphs": [
+    {
+      "id": "0",
+      "name": "moderation",
+      "routingUrl": "http://localhost:4012/graphql"
+    },
+    {
+      "id": "1",
+      "name": "public",
+      "routingUrl": "http://localhost:4013/graphql"
+    },
+    {
+      "id": "2",
+      "name": "users",
+      "routingUrl": "http://localhost:4014/graphql"
+    }
+  ],
+  "featureFlagConfigs": {},
+  "compatibilityVersion": "2:{{$COMPOSITION__VERSION}}"
+}

@@ -1,0 +1,15 @@
+version: 1
+
+subgraphs:
+  - name: moderation
+    routing_url: http://localhost:4012/graphql
+    schema:
+      file: ../../../../demo/pkg/subgraphs/contextmoderation/subgraph/schema.graphqls
+  - name: public
+    routing_url: http://localhost:4013/graphql
+    schema:
+      file: ../../../../demo/pkg/subgraphs/contextpublic/subgraph/schema.graphqls
+  - name: users
+    routing_url: http://localhost:4014/graphql
+    schema:
+      file: ../../../../demo/pkg/subgraphs/contextusers/subgraph/schema.graphqls
