@@ -273,7 +273,8 @@ In `organization(id: "o1") { queues { flaggedUsers { profile { displayName } } }
 ### Fields of the setter type
 
 A type does not provide context values to its own fields.
-The argument of a field on a setter type reads the context from an ancestor of the object:
+The argument of a field on a setter type reads the context from an ancestor of the object.
+This example also uses the types of [Nearest ancestor](#nearest-ancestor):
 
 ```graphql
 # users subgraph
@@ -300,6 +301,26 @@ For any other object, a farther ancestor provides the value, or the argument is 
 When the types that set a context hold the value in different fields, the selection uses one inline fragment per type:
 
 ```graphql
+# moderation subgraph
+type Query {
+  scopes: [Scope!]!
+}
+
+union Scope = ModerationQueue | AppealQueue | Team
+
+type AppealQueue @key(fields: "id") {
+  id: ID!
+  showSuspended: Boolean
+  flaggedUsers: [User!]!
+}
+
+type Team @key(fields: "id") {
+  id: ID!
+  members: [User!]!
+}
+```
+
+```graphql
 # users subgraph
 union Scope @context(name: "scope") = ModerationQueue | AppealQueue | Team
 
@@ -323,7 +344,6 @@ type User @key(fields: "id") {
 }
 ```
 
-The moderation subgraph defines `Scope` with the same members and resolves `includeSuspended` and `showSuspended`.
 Below a `ModerationQueue`, `scopeView` receives `includeSuspended`.
 Below an `AppealQueue`, it receives `showSuspended`.
 Below a `Team`, it receives `null`, because the selection has no fragment on `Team`.
