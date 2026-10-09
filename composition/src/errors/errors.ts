@@ -2481,9 +2481,10 @@ export function contextualArgumentWithoutLocalKeyErrorMessage({
   typeName,
 }: ContextualArgumentWithoutLocalKeyErrorParams): string {
   return (
-    `The type "${typeName}" defines a field with an argument that defines "@${FROM_CONTEXT}", so at least one of its` +
-    ` "@${KEY}" directives must select only fields that this subgraph resolves.` +
-    ` Every "@${KEY}" of "${typeName}" selects a field declared "@${EXTERNAL}": "` +
+    `The type "${typeName}" defines a field with an argument that defines "@${FROM_CONTEXT}", so it must define at` +
+    ` least one "@${KEY}" that is resolvable in this subgraph and selects no field declared "@${EXTERNAL}".` +
+    ` The router resolves the field through an entity fetch to this subgraph, and that fetch can only use such a` +
+    ` "@${KEY}". Every resolvable "@${KEY}" of "${typeName}" selects a field declared "@${EXTERNAL}": "` +
     externalFieldCoords.join(QUOTATION_JOIN) +
     `".`
   );
