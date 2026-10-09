@@ -264,6 +264,7 @@ func TestContextualArguments(t *testing.T) {
 
 			q1 := xEnv.MakeGraphQLRequestOK(testenv.GraphQLRequest{Query: query, Variables: json.RawMessage(`{"id":"q1"}`)})
 			require.JSONEq(t, `{"data":{"moderationQueue":{"flaggedUsers":[{"id":"u1","profile":{"includeSuspended":true}},{"id":"u2","profile":{"includeSuspended":true}}]}}}`, q1.Body)
+			require.Equal(t, "MISS", q1.Response.Header.Get(core.ExecutionPlanCacheHeader))
 			require.Equal(t, []string{
 				`{"contextualArgument_0":true,"representations":[{"__typename":"User","id":"u1"},{"__typename":"User","id":"u2"}]}`,
 			}, s.variablesTo("users"))
@@ -271,6 +272,7 @@ func TestContextualArguments(t *testing.T) {
 			s.reset()
 			q2 := xEnv.MakeGraphQLRequestOK(testenv.GraphQLRequest{Query: query, Variables: json.RawMessage(`{"id":"q2"}`)})
 			require.JSONEq(t, `{"data":{"moderationQueue":{"flaggedUsers":[{"id":"u2","profile":{"includeSuspended":false}},{"id":"u3","profile":{"includeSuspended":false}}]}}}`, q2.Body)
+			require.Equal(t, "HIT", q2.Response.Header.Get(core.ExecutionPlanCacheHeader))
 			require.Equal(t, []string{
 				`{"contextualArgument_0":false,"representations":[{"__typename":"User","id":"u2"},{"__typename":"User","id":"u3"}]}`,
 			}, s.variablesTo("users"))
