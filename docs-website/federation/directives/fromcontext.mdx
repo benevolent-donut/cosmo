@@ -439,6 +439,7 @@ In these rules, a setter type is a type of the subgraph that declares the contex
   - `@fromContext` applies to an argument of a field on an `@interfaceObject` type.
   - A type that sets a referenced context implements an interface that a subgraph declares `@interfaceObject`.
   - A selection resolves to several fields.
+  - The object type that defines a field with a contextual argument has a resolvable `@key` and a `@key` without `@external` fields, but no single `@key` with both properties.
 - **gRPC services and router plugins**: Contextual arguments work in GraphQL subgraphs only.
   Composition fails when a [gRPC service or router plugin](/router/gRPC/concepts) defines one.
 
