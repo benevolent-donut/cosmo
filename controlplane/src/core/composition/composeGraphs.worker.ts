@@ -18,7 +18,7 @@ import * as Sentry from '@sentry/node';
 import { fastifyIntegration, pinoIntegration } from '@sentry/node';
 import { eventLoopBlockIntegration } from '@sentry/node-native';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import type { FederationResult, FederationResultWithContracts } from '@wundergraph/composition';
+import type { FederationFailure, FederationResult, FederationResultWithContracts } from '@wundergraph/composition';
 import {
   federateSubgraphsContract,
   federateSubgraphsWithContracts,
@@ -31,7 +31,11 @@ import {
   RouterConfigSchema,
 } from '@wundergraph/cosmo-connect/dist/node/v1/node_pb';
 import type { RouterSubgraph } from '@wundergraph/cosmo-shared';
-import { buildRouterConfig, SubgraphKind } from '@wundergraph/cosmo-shared';
+import {
+  buildRouterConfig,
+  getUnsupportedContextualArgumentSubgraphErrors,
+  SubgraphKind,
+} from '@wundergraph/cosmo-shared';
 import { parse } from 'graphql';
 import { workerId } from 'tinypool';
 import { z } from 'zod';
@@ -188,6 +192,47 @@ function subgraphDTOsToRouterSubgraphs(
   );
 }
 
+function getSubgraphKind({ type }: SubgraphDTO): SubgraphKind {
+  switch (type) {
+    case 'grpc_plugin': {
+      return SubgraphKind.Plugin;
+    }
+    case 'grpc_service': {
+      return SubgraphKind.GRPC;
+    }
+    default: {
+      return SubgraphKind.Standard;
+    }
+  }
+}
+
+/**
+ * Contextual arguments are only supported in GraphQL subgraphs, so a gRPC service or plugin subgraph that defines
+ * them fails the composition.
+ */
+function validateContextualArgumentSubgraphs<T extends FederationResult | FederationResultWithContracts>(
+  subgraphs: SubgraphDTO[],
+  result: T,
+): T | FederationFailure {
+  return Sentry.startSpan({ name: 'ComposeGraphsWorker.validateContextualArgumentSubgraphs' }, () => {
+    if (!result.success) {
+      return result;
+    }
+    const errors = getUnsupportedContextualArgumentSubgraphErrors(
+      subgraphs.map((subgraph) => ({
+        configurationDataByTypeName: result.subgraphConfigBySubgraphName.get(subgraph.name)
+          ?.configurationDataByTypeName,
+        kind: getSubgraphKind(subgraph),
+        name: subgraph.name,
+      })),
+    );
+    if (errors.length === 0) {
+      return result;
+    }
+    return { errors, success: false, warnings: result.warnings };
+  });
+}
+
 // Serialize the worker-side composition result into a structured-clone-safe
 // artifact for the main thread. This keeps the boundary limited to plain data,
 // and the main thread is responsible for rebuilding richer runtime objects
@@ -296,7 +341,7 @@ function composeGraphsInWorker(task: ComposeGraphsTaskInput): ComposeGraphsTaskR
             // Version is validated on the main thread before dispatching to the worker.
             const version = task.routerCompatibilityVersion;
 
-            const result: FederationResult | FederationResultWithContracts = task.federatedGraph.contract
+            const federationResult: FederationResult | FederationResultWithContracts = task.federatedGraph.contract
               ? Sentry.startSpan({ name: 'ComposeGraphsWorker.federateSubgraphsContract' }, () =>
                   federateSubgraphsContract({
                     contractTagOptions: newContractTagOptionsFromArrays(
@@ -316,6 +361,7 @@ function composeGraphsInWorker(task: ComposeGraphsTaskInput): ComposeGraphsTaskR
                     version,
                   }),
                 );
+            const result = validateContextualArgumentSubgraphs(subgraphsToCompose.subgraphs, federationResult);
 
             const includeRouterConfig = !task.skipRouterConfig;
             const base = serializeComposedGraphArtifact(

@@ -19,6 +19,7 @@ import {
 
 import type { FeatureFlagRouterExecutionConfig, RouterConfig } from '@wundergraph/cosmo-connect/dist/node/v1/node_pb';
 
+import { foldRouterCompatibilityVersion, getRequiredRouterCompatibilityVersion } from '@wundergraph/cosmo-shared';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { FederatedGraphDTO, Label, SubgraphDTO } from '../../types/index.js';
 import { BlobStorage } from '../blobstorage/index.js';
@@ -195,6 +196,13 @@ export class Composer {
 
     return create(RouterConfigSchema, {
       ...baseCompositionRouterExecutionConfig,
+      // Routers check only the compatibility version of the base config, so it covers the feature flag configs too.
+      compatibilityVersion: foldRouterCompatibilityVersion(
+        baseCompositionRouterExecutionConfig.compatibilityVersion,
+        Object.values(baseCompositionRouterExecutionConfig.featureFlagConfigs?.configByFeatureFlagName ?? {}).map(
+          ({ engineConfig }) => getRequiredRouterCompatibilityVersion(engineConfig),
+        ),
+      ),
     });
   }
 
