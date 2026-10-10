@@ -3444,29 +3444,56 @@ describe('@context and @fromContext validation tests', () => {
     });
 
     test('returns an error if the Mutation type is the only setter type of a referenced context', () => {
-      const { errors, warnings } = normalizeSubgraphFailure(
-        createSubgraph(
-          'users',
-          `
-            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
-              import: ["@key", "@external", "@context", "@fromContext"])
-            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
-              id: ID!
-              includeSuspended: Boolean! @external
-            }
-            type User @key(fields: "id") {
-              id: ID!
-              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
-            }
-            type Profile { displayName: String! }
-            type Mutation @context(name: "userScope") { includeSuspended: Boolean! }
-          `,
-        ),
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+              type Mutation { flagUser(id: ID!): User }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+              type Mutation @context(name: "userScope") { includeSuspended: Boolean! }
+            `,
+          ),
+        ],
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(errors).toStrictEqual([
-        invalidDirectiveError(CONTEXT, 'Mutation', FIRST_ORDINAL, [
-          rootOperationTypeContextErrorMessage({ operationType: OperationTypeNode.MUTATION, typeName: 'Mutation' }),
+        subgraphValidationError('users', [
+          invalidDirectiveError(CONTEXT, 'Mutation', FIRST_ORDINAL, [
+            rootOperationTypeContextErrorMessage({ operationType: OperationTypeNode.MUTATION, typeName: 'Mutation' }),
+          ]),
         ]),
       ]);
       expect(warnings).toStrictEqual([
@@ -3544,32 +3571,59 @@ describe('@context and @fromContext validation tests', () => {
     });
 
     test('returns an error if the Subscription type is the only setter type of a referenced context', () => {
-      const { errors, warnings } = normalizeSubgraphFailure(
-        createSubgraph(
-          'users',
-          `
-            extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
-              import: ["@key", "@external", "@context", "@fromContext"])
-            type ModerationQueue @key(fields: "id") @context(name: "userScope") {
-              id: ID!
-              includeSuspended: Boolean! @external
-            }
-            type User @key(fields: "id") {
-              id: ID!
-              profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
-            }
-            type Profile { displayName: String! }
-            type Subscription @context(name: "userScope") { includeSuspended: Boolean! }
-          `,
-        ),
+      const { errors, warnings } = federateSubgraphsFailure(
+        [
+          createSubgraph(
+            'moderation',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { moderationQueue(id: ID!): ModerationQueue }
+              type ModerationQueue @key(fields: "id") {
+                id: ID!
+                includeSuspended: Boolean!
+                flaggedUsers: [User!]!
+              }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+              type Subscription { userFlagged: User! }
+            `,
+          ),
+          createSubgraph(
+            'public',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8", import: ["@key"])
+              type Query { post(id: ID!): Post }
+              type Post @key(fields: "id") { id: ID! }
+              type User @key(fields: "id", resolvable: false) { id: ID! }
+            `,
+          ),
+          createSubgraph(
+            'users',
+            `
+              extend schema @link(url: "https://specs.apollo.dev/federation/v2.8",
+                import: ["@key", "@external", "@context", "@fromContext"])
+              type ModerationQueue @key(fields: "id") @context(name: "userScope") {
+                id: ID!
+                includeSuspended: Boolean! @external
+              }
+              type User @key(fields: "id") {
+                id: ID!
+                profile(includeSuspended: Boolean @fromContext(field: "$userScope { includeSuspended }")): Profile
+              }
+              type Profile { displayName: String! }
+              type Subscription @context(name: "userScope") { includeSuspended: Boolean! }
+            `,
+          ),
+        ],
         ROUTER_COMPATIBILITY_VERSION_ONE,
       );
       expect(errors).toStrictEqual([
-        invalidDirectiveError(CONTEXT, 'Subscription', FIRST_ORDINAL, [
-          rootOperationTypeContextErrorMessage({
-            operationType: OperationTypeNode.SUBSCRIPTION,
-            typeName: 'Subscription',
-          }),
+        subgraphValidationError('users', [
+          invalidDirectiveError(CONTEXT, 'Subscription', FIRST_ORDINAL, [
+            rootOperationTypeContextErrorMessage({
+              operationType: OperationTypeNode.SUBSCRIPTION,
+              typeName: 'Subscription',
+            }),
+          ]),
         ]),
       ]);
       expect(warnings).toStrictEqual([
